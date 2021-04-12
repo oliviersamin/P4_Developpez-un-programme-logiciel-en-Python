@@ -25,25 +25,38 @@ The best of half up is paired with the best of half down and so forth and so on 
 If necessary sort them again with their rank.
 """
 
+import time as t
 
-class NewTournament:
 
-    def create_tournament_1(self):
-        """ the user create a new tournament """
+from Modeles import modeles as mod
 
-    def add_players_2(self):
-        """ the user add 8 players and their associated data """
+class Tournament(mod.Tournament):
+    """ class to check the on-going of the tournament """
+    def __init__(self):
+        mod.Tournament.__init__(self)
+        # variables to check the on-going of each step of the tournament
+        # when the variable is set to False, it means that the step hasn't sart yet, if it set to True
+        # then the step is on-going or complete
+        self.tournament_start = False
+        self.players_check = False
+        self.rounds_checks = [False, False, False, False, False, False, False, False]
+        self.tournament_end = False
+        # variables to generate automatic date & time for rounds
+        self.round_date_hours = []
+        self.date_time_format = "%d/%m/%Y - %H:%M:%S"
 
-    def create_new_round(self):
+    def __create_date_and_hour_of_new_round(self):
         """ the user starts a new round  the program get the date and hour of its start"""
+        self.round_date_hours.append({'start': t.strftime(self.date_time_format, t.localtime())})
 
     def __generate_pairs_3(self):
         """ private method : when all the players are entered by the user,
         the program creates the pairs following the swiss system rules given by the client """
 
-    def enter_round_scores_4(self):
+    def __create_date_and_hour_for_finished_round(self):
         """ at the end of the round, the user enter the scores for each match,
         the program get the date and hour of its end """
+        self.round_date_hours.append({'end': t.strftime(self.date_time_format, t.localtime())})
 
     def __calculate_total_score(self):
         """ private method to automatically calculate total score

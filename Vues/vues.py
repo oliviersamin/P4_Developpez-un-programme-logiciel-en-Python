@@ -2,9 +2,10 @@
 Project 4 of OpenClassRooms Cursus:
 Développez un programme logiciel en Python
 """
-# import os
 import tkinter as tk
+import tkinter.messagebox as mb  # use it as follow: mb.showinfo(title=<TITRE>, message=<MESSAGE>)
 
+from Controleurs import controleurs as ct
 
 class GUI(tk.Tk):
     """ main window of the GUI """
@@ -24,27 +25,36 @@ class GUI(tk.Tk):
         # build the two secondary windows to displays information
         self.frame_left = tk.Frame(self, borderwidth=5, relief=tk.GROOVE)
         self.frame_left.grid(row=0, column=0)
+        self.window_left_info = None
         self.frame_right = tk.Frame(self, borderwidth=5, relief=tk.GROOVE)
         self.frame_right.grid(row=0, column=1)
         # stock the last created window to be able to reset it if needed
         self.last_created_window = None
+        # launch the controlers check
+        self.new_tournament = ct.Tournament()
         self.launch()
 
     def display_create_tournement_window(self):
         """ displays tournament window so the user can create
         a new tournament and enter all the needed data"""
-        self.geometry(self.size_tournament)
-        self.window_new_tournement = CreateNewTournement(master=self.frame_right, borderwidth=0, relief=tk.GROOVE)
-        self.window_new_tournement.grid(row=1, column=0, padx=10, pady=20)
-        self.last_created_window = self.window_new_tournement
+        if not self.new_tournament.tournament_start:
+            self.geometry(self.size_tournament)
+            self.window_new_tournement = CreateNewTournement(master=self.frame_right, borderwidth=0, relief=tk.GROOVE)
+            self.window_new_tournement.grid(row=1, column=0, padx=10, pady=20)
+            self.last_created_window = self.window_new_tournement
+        else:
+            mb.showinfo(title='ATTENTION', message='UN TOURNOI EST DÉJA CRÉÉ')
 
     def display_add_new_player_window(self):
         """ displays tournament window so the user can create
         a new tournament and enter all the needed data"""
-        self.geometry(self.size_add_player)
-        self.window_new_player = AddPlayers(master=self.frame_right, borderwidth=0, relief=tk.GROOVE)
-        self.window_new_player.grid(row=1, column=0, padx=10, pady=20)
-        self.last_created_window = self.window_new_player
+        if self.new_tournament.tournament_start:
+            self.geometry(self.size_add_player)
+            self.window_new_player = AddPlayers(master=self.frame_right, borderwidth=0, relief=tk.GROOVE)
+            self.window_new_player.grid(row=1, column=0, padx=10, pady=20)
+            self.last_created_window = self.window_new_player
+        else:
+            mb.showinfo(title='ATTENTION', message="Créez un tournoi avant de créer des joueurs")
 
     def display_left_window_informations(self):
         """ Displays the tournement information available """
@@ -122,7 +132,7 @@ class GenericWindow(tk.Frame):
 
     def my_data(self, name1, name2, r, c, rsp, csp, px, py):
         """ this method generates two lines with one label each """
-        line1 = tk.Label(self, text=name1, anchor='w',font = "Helvetica 12 bold")
+        line1 = tk.Label(self, text=name1, anchor='w', font="Helvetica 12 bold")
         line1.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
         line2 = tk.Label(self, text=name2, anchor='w')
         line2.grid(row=r+1, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
@@ -156,21 +166,34 @@ class LeftWindow(GenericWindow):
     """ display the information of the tournament to allow the user to see its evolution """
     def __init__(self, master, **kwargs):
         GenericWindow.__init__(self, master, **kwargs)
-        self.display(['non créé', '0/8', 'aucun'])
+        self.values = {'Statut tournoi': 'non créé', 'Joueurs': '0/8', 'Tour en cours': 'aucun'}
+        self.display()
 
-    def display(self, list_info):
-        """ displays  the window , the parameter list_info give info on each element
-        of the labels vairable in this method"""
-        labels = ['Statut tournoi', 'Joueurs', 'Tour en cours']
+    def display(self):
+        """ displays  the window """
+
         ligne = 0
-        for label, info in zip(labels, list_info):
-            self.my_data(label, info, ligne, 0, 1, 1, 2, 2)
-            ligne += 2
+        for key, value in self.values.items():
+            self.my_data(key, value, ligne, 0, 1, 1, 2, 2)
+            ligne +=2
+
+    def update(self):
+        """ update the display when changes occur """
+        if self.master.master.new_tournament.tournament_start:
+            self.values['Statut tournoi'] = 'en cours'
+        if self.master.master.new_tournament.players_check:
+            self.values['Joueurs'] = '8/8'
+        for index, tour in enumerate(self.master.master.new_tournament.rounds_checks):
+            if tour:
+                self.values['Tour en cours'] = '{}/{}'.format(index+1, len(self.master.master.new_tournament.rounds_checks))
+        self.reset()
+        self.display()
 
 
 class CreateNewTournement(GenericWindow):
     def __init__(self, master, **kwargs):
         GenericWindow.__init__(self, master, **kwargs)
+        self.attributs = ['name', 'location', 'date', 'round_number', 'time_control', 'description']
         self.destroy_previous_window()
         self.display()
 
@@ -179,7 +202,18 @@ class CreateNewTournement(GenericWindow):
         labels = ['Nom du tournoi', 'Lieu', 'date', 'Nombre de tours', 'Contrôle du temps', 'Description']
         for index, elem in enumerate(labels):
             self.my_line(elem, index, 0, 1, 1, 10, 10)
-        self.my_button('créer le tournoi', 0, len(labels)+1, self.display_variables)
+        self.my_button('créer le tournoi', 0, len(labels)+1, self.create_new_tournament)  # self.display_variables)
+
+    def create_new_tournament(self):
+        """ create a new tournament with all variables """
+        self.master.master.new_tournament.tournament_start = True
+        for elem,attribut in zip(self.data,self.attributs):
+            try:
+                setattr(self.master.master.new_tournament, attribut, elem['tk_object'].get())
+            except:
+                setattr(self.master.master.new_tournament, attribut, elem['tk_object'])
+        # print(self.master.master.new_tournament.__dict__)
+        self.master.master.window_left_info.update()
 
 
 class AddPlayers(GenericWindow):
@@ -224,7 +258,7 @@ class CloseRound(GenericWindow):
         self.destroy_previous_window()
         self.display(['john', 'papa', 'maman', 'luli', 'moi', 'papou', 'madou', 'jess'])
 
-    def display(self,list_players):
+    def display(self, list_players):
         """ displays  the window that allows the user to enter scores for the round that just stoped"""
         for index, elem in enumerate(list_players):
             self.my_line(elem, index, 0, 1, 1, 10, 10)
@@ -232,7 +266,7 @@ class CloseRound(GenericWindow):
 
     def validate_scores(self):
         """ method to save scores of one round """
-        print ('VALIDATION DES SCORES à créer')
+        print('VALIDATION DES SCORES à créer')
 
 
 if __name__ == "__main__":

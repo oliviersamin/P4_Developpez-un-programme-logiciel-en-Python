@@ -4,7 +4,7 @@ Développez un programme logiciel en Python
 """
 
 
-class Tournement:
+class Tournament:
     def __init__(self):
         self.name = ''
         self.location = ''
@@ -12,7 +12,7 @@ class Tournement:
         self.round_number = 4
         self.rounds = []
         self.players = []
-        self.time_control = ['bullet', 'blitz', 'coup rapide']
+        self.time_control = ''  # ['bullet', 'blitz', 'coup rapide']
         self.description = ''
 
 
