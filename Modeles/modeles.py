@@ -4,7 +4,7 @@ Développez un programme logiciel en Python
 """
 
 
-class Tournement():
+class Tournement:
     def __init__(self):
         self.name = ''
         self.location = ''
@@ -16,24 +16,25 @@ class Tournement():
         self.description = ''
 
 
-class Player():
+class Player:
     def __init__(self):
         self.last_name = ''
         self.first_name = ''
         self.date_of_birth = ''
         self.sexe = ''
-        self.classification = 0  # positive number only
+        self.rank = 0  # positive number only
 
 
-class Match():
+class Match:
     def __init__(self):
         self.results = ([playerInstance1, score1], [playerInstance2, score2])  # client requests
 
 
-class Round():
+class Round:
     def __init__(self):
         self.matchs = []
         self.name = 'Round'  # to be filled to get 'Round1', 'Round2' ...
         self.start = ''  # date and hour when a round instance is created (filled automatically)
         self.end = ''  # date and hour when a round instance is marked as ended by user (filled automatically)
         self.round_ended = False  # Boolean to check if round is ended by user
+
