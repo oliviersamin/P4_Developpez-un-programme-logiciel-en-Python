@@ -26,7 +26,7 @@ If necessary sort them again with their rank.
 """
 
 
-class NewTournament():
+class NewTournament:
 
     def create_tournament_1(self):
         """ the user create a new tournament """
@@ -41,7 +41,7 @@ class NewTournament():
         """ private method : when all the players are entered by the user,
         the program creates the pairs following the swiss system rules given by the client """
 
-    def enter_round_scrores_4(self):
+    def enter_round_scores_4(self):
         """ at the end of the round, the user enter the scores for each match,
         the program get the date and hour of its end """
 
@@ -50,7 +50,7 @@ class NewTournament():
         for each player of the tournament """
 
 
-class OpenSaveTournament():
+class OpenSaveTournament:
 
     def open_saved_tournament(self):
         """ open an already saved tournament """
@@ -59,7 +59,7 @@ class OpenSaveTournament():
         """ save the current tournament """
 
 
-class GenerateReports():
+class GenerateReports:
 
     def generate_report(self):
         """ generate report with the parameters """
