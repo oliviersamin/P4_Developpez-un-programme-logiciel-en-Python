@@ -1,4 +1,4 @@
-import json
+import os
 
 ########################################################################################
 #               GUI CONFIG
@@ -26,10 +26,7 @@ update_tournament = 'en cours'
 # all the players registered
 update_players = '8/8'
 
-########################################################################################
-#               CONTROLER CONFIG
-########################################################################################
-
+# variable used also in the controller file to control gui behavior
 authorization = [{'name': 'tournament_start', 'label': "Créer le tournoi", 'class': 'CreateNewTournament',
                   'size': size_tournament, 'state': 'normal'},
                  {'name': 'add_players', 'label': "Ajouter les joueurs", 'class': 'AddPlayers',
@@ -39,7 +36,9 @@ authorization = [{'name': 'tournament_start', 'label': "Créer le tournoi", 'cla
                  {'name': 'close_round', 'label': 'Cloturer le tour', 'class': 'CloseRound',
                   'size': size_closing_round, 'state': 'disabled'}]
 
-update_menus_file = 'menus_states.json'
+# name and path to text file containing json data from gui to be used by controller
+update_menus_file = 'menus_states.txt'
+path_state_file = os.path.join(os.path.abspath(os.path.curdir),update_menus_file)
 
 ########################################################################################
 #               GUI CONFIG
@@ -70,16 +69,5 @@ menus_main = [{'name': "tournoi actuel",
                           {'label': "liste de tous les matchs d'un tournoi", 'state': 'disabled',
                            'function': 'self.test'}]}]
 
-def read_menus_states():
-    """ reads from a .json file the states of the several submenus of the gui """
-    with open(update_menus_file,'r') as f:
-        states = f.read()
-    print(states)
-    return(states)
-
-def write_menus_states(menus_states):
-    """ write from self.authorization thes states of the menus in a json file """
-    states = json.dumps(menus_states)
-    print ('dans config states = ',states)
-    with open(update_menus_file,'w') as f:
-        f.write(states)
+# field name for tournament creation window.
+labels_tournament_creation = ['Nom du tournoi', 'Lieu', 'date', 'Nombre de tours', 'Contrôle du temps', 'Description']

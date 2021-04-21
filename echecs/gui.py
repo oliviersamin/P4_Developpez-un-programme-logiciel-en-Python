@@ -6,26 +6,6 @@ import config_v2 as cf
 import controleurs as ct
 
 
-def send_info_to_controller(info):
-    """ send the info entered by user to the controller and modify state parameters of label in
-    the main menus to be able to activate next step of tournament
-    info is a dictionnary"""
-    return(ct.receive_gui_tournament_info(info))
-
-# def read_menus_states():
-#     """ reads from a .json file the states of the several submenus of the gui """
-#     with (open(cf.update_menus_file,'r') as f):
-#         states = f.read()
-#     print(states)
-#     return(states)
-#
-# def write_menus_states(menus_states):
-#     """ write from self.authorization thes states of the menus in a json file """
-#     states = json.dumps(menus_states)
-#     with (open(cf.update_menus_file,'w') as f):
-#         f.write(states)
-
-
 class MainWindow(tk.Tk):
     """ main window of the GUI """
     def __init__(self):
@@ -43,6 +23,8 @@ class MainWindow(tk.Tk):
         self.geometry(self.size_main)
         # authorization parameters for controller
         self.authorization = cf.authorization
+        # display the main menus of the gui
+        self.menus_main = cf.menus_main
         # name of the json file used to update self.authorization
         self.update_menus_file = cf.update_menus_file
         # build the two secondary windows to displays information
@@ -68,19 +50,43 @@ class MainWindow(tk.Tk):
             borderwidth=0, relief=tk.GROOVE)
         self.window_left_info.grid(row=1, column=0, padx=10, pady=20)
 
+    def update_menus(self):
+        """ update the main menus of the gui"""
+        return [{'name': "tournoi actuel",
+                       'unfold': [{'label': elem['label'], 'state': elem['state'],
+                                   'function': "lambda i= '" + elem['name'] + "': self.display_right_window(i)"}
+                                  for elem in self.authorization]},
+                      {'name': "ouvrir / sauvegarder le tournoi",
+                       'unfold': [{'label': "Ouvrir un tournoi sauvegardé", 'state': 'normal',
+                                   'function': 'self.test'},
+                                  {'label': "Sauvegarder le tournoi en cours", 'state': 'disabled',
+                                   'function': 'self.test'}]},
+                      {'name': "générer les rapports",
+                       'unfold': [{'label': "liste de tous les acteurs", 'state': 'disabled',
+                                   'function': 'self.test'},
+                                  {'label': "liste des joueurs du tournoi actuel", 'state': 'disabled',
+                                   'function': 'self.test'},
+                                  {'label': "liste de tous les tournois", 'state': 'disabled',
+                                   'function': 'self.test'},
+                                  {'label': "liste de tous les tours d'un tournoi", 'state': 'disabled',
+                                   'function': 'self.test'},
+                                  {'label': "liste de tous les matchs d'un tournoi", 'state': 'disabled',
+                                   'function': 'self.test'}]}]
+
     def launch(self):
         """ displays the main window of the GUI """
         # displays the left window
         self.display_left_window_informations()
         # displays the menubar using the config file in the package
         self.menubar = tk.Menu(self)
-        for elem in cf.menus_main:
+        self.menus_main = self.update_menus()
+        for elem in self.menus_main:
             menu = tk.Menu(self.menubar, tearoff=0)
             for el in elem['unfold']:
                 menu.add_command(label=el['label'], state= el['state'], command=eval(el['function'],{'self': self}))
             self.menubar.add_cascade(label=elem['name'], menu=menu)
         self.config(menu=self.menubar)
-        cf.write_menus_states(self.authorization)
+        ct.write_menus_states(self.authorization)
 
     def test(self):
         """ while contruction is in progress. MUST BE ERASED AT THE END"""
@@ -106,6 +112,7 @@ class DisplayWindow:
         master.master.geometry(size)
         self.window = class_to_use(master=master, borderwidth=0, relief=tk.GROOVE)
         self.window.grid(row=row, column=column, padx=10, pady=20)
+        master.master.last_created_window = self.window
 
 
 
@@ -125,7 +132,7 @@ class GenericWindow(tk.Frame):
     def __init__(self, master, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
         self.data = []  # data with following struture {'name': <NAME>, 'tk_object': <tkObject>}
-        self.menus_states = None
+        self.menus_states = ct.states
 
     def my_line(self, master, name, r, c, rsp, csp, px, py):
         """ this method generates a line with a label in a column and an Entry in the column next to it
@@ -156,7 +163,9 @@ class GenericWindow(tk.Frame):
 
     def destroy_previous_window(self):  # TO BE MODIFIED
         """ destroy a previous window that might still be displayed """
+        print('dans destroy_previous_window\n', self.master.master.last_created_window)
         if self.master.master.last_created_window is not None:
+            # print('dans if')
             self.master.master.last_created_window.destroy()
             self.master.master.last_created_window = None
 
@@ -167,6 +176,11 @@ class GenericWindow(tk.Frame):
             print(elem['tk_object'].get())
         self.destroy()
         self.master.master.geometry(self.master.master.size_main)
+
+    def update_main_window_menus(self):
+        """ update the main menu of the gui with the new states """
+        self.master.master.authorization = ct.read_menus_states()
+        self.master.master.launch()
 
 
 class LeftWindow(GenericWindow):
@@ -210,14 +224,20 @@ class CreateNewTournament(GenericWindow):
 
     def display(self, master):
         """ displays  the window """
-        labels = ['Nom du tournoi', 'Lieu', 'date', 'Nombre de tours', 'Contrôle du temps', 'Description']
+        labels = cf.labels_tournament_creation
         for index, elem in enumerate(labels):
             self.my_line(master, elem, index, 0, 1, 1, 10, 10)
         self.my_button(master, 'créer le tournoi', 0, len(labels)+1, self.create_new_tournament)
 
     def create_new_tournament(self):  # TO BE MODIFIED
-        """ create a new tournament with all variables and send a signal to controller for en d of
-        tournament step by user"""
+        """ 1 - gather all the user inputs and update the corresponding variable
+            2 - create a text file with menus states of the main window (to be used by controller)
+            3 - send the updated variable to controller
+            4 - when controller has finished its work,
+            update the menus of the main window using the new text file created by controller
+            5 - destroy itself
+            """
+        # 1
         for elem in self.data:
             key = ''
             value = ''
@@ -227,18 +247,15 @@ class CreateNewTournament(GenericWindow):
                 else:
                     value = v.get()
             self.attributs.update({key: value})
-        cf.write_menus_states(self.menus_states)
-        send_info_to_controller(self.attributs)
+        # 2
+        ct.write_menus_states(self.menus_states)
+        # 3
+        ct.receive_gui_tournament_info(self.attributs)
+        # 4
+        self.update_main_window_menus()
+        # 5
+        self.master.destroy()
 
-    # def create_new_tournament(self):  # TO BE MODIFIED
-    #     """ create a new tournament with all variables """
-    #     for elem, attribut in zip(self.data, self.attributs):
-    #         print(attribut, elem)
-    #         # try:
-    #         #     setattr(self.master.master.new_tournament, attribut, elem['tk_object'].get())
-    #         # except Exception:
-    #         #     setattr(self.master.master.new_tournament, attribut, elem['tk_object'])
-    #     self.tournament_created = True
 
 class AddPlayers(GenericWindow):
     def __init__(self, master, **kwargs):

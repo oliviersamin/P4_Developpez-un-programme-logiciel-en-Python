@@ -26,38 +26,84 @@ If necessary sort them again with their rank.
 """
 
 import time as t
+import json
 
 import gui
 import config_v2 as cf
 import modeles as mod
 
 
+states = cf.authorization
+gui_information = None
+
+
+def read_menus_states():
+    """ reads the states of the gui menus from a .txt file """
+    with open(cf.path_state_file, 'r') as f:
+        states_menus = json.load(f)
+    return states_menus
+
+
+def write_menus_states(menus_states):
+    """ write the states of the gui menus in a txt file """
+    with open(cf.path_state_file, 'w') as f:
+        json.dump(menus_states, f)
+
+
+def update_states():
+    """ update the states of the main menus to control the steps of the tournament """
+    states_menus = states
+    try:
+        states_menus = read_menus_states()
+    except FileNotFoundError:
+        print('pas de données sur STATES enregistrées')
+    return states_menus
+
+
 def receive_gui_tournament_info(info):
-    """ receive a dictionnary form the send_info_to_controller() function of gui
-    1 - identify from what step of the tournament this info comes from
-    2 - use this information to complete the appropriate modele
-    3 - return an information to unlock the next step of the tournament and block the others"""
-    print('dans ct.receive_gui_tournament_info')
-    print(info)
+    """ 1 - receive a dictionary from the gui functions
+        2 - update the states to know what steps of the tournament is active
+        3 - assign data to the correspondant variables"""
+    global states, gui_information
+    states = update_states()
+    gui_information = info
+    name = analyse_states_menus()
+    print('dans receive_gui_tournament_info:\n', info)
+    assign_info_to_model(name)
 
-# def control_request(request):
-#     for elem in cf.authorization:
-#         for key, value in elem.items():
-#             if key == 'name':
-#                 if (request == value) & (elem['variable_name'] is False):
-#                     return True
-#                 elif (request == value) & (elem['variable_name'] is True):
-#                     return False
 
+def analyse_states_menus():
+    """ discover what step of the tournament is active"""
+    # print('dans analyse_states_menus')
+    for elem in states:
+        if elem['state'] == 'normal':
+            return elem['name']
+
+
+def assign_info_to_model(name):
+    """ assign the info send by gui to right model """
+    if name == 'tournament_start':
+        global tournament
+        tournament = Tournament
+        tournament.tournament_start = True
+        for elem in states:
+            if elem['name'] == name:
+                elem['state'] = 'disabled'
+            elif elem['name'] == 'add_players':
+                elem['state'] = 'normal'
+
+    write_menus_states(states)
+
+# def
 
 class Tournament(mod.Tournament):
     """ class to check the on-going of the tournament """
     def __init__(self):
         mod.Tournament.__init__(self)
         # variables to check the on-going of each step of the tournament
-        # when the variable is set to False, it means that the step hasn't sart yet, if it set to True
+        # when the variable is set to False, it means that the step hasn't start yet, if it set to True
         # then the step is on-going or complete
-        self.tournament_start_check = False
+        self.tournament_start = False
         self.players_check = False
         self.round_current_check = False
         self.rounds_checks = [False, False, False, False, False, False, False, False]
