@@ -34,7 +34,9 @@ import modeles as mod
 
 
 states = cf.authorization
-gui_information = None
+gui_information = {}
+tournament = None
+player = None
 
 
 def read_menus_states():
@@ -68,33 +70,60 @@ def receive_gui_tournament_info(info):
     states = update_states()
     gui_information = info
     name = analyse_states_menus()
-    print('dans receive_gui_tournament_info:\n', info)
+    update_main_menus_states(name)
     assign_info_to_model(name)
+    write_menus_states(states)
 
 
 def analyse_states_menus():
-    """ discover what step of the tournament is active"""
-    # print('dans analyse_states_menus')
+    """ discover what step of the tournament is active
+    return the name of the step which is active"""
     for elem in states:
         if elem['state'] == 'normal':
             return elem['name']
+
+
+def update_main_menus_states(name):
+    """ update the state of menus for main_window """
+    if name == 'tournament_start':
+        for elem in states:
+            if elem['name'] == name:
+                elem['state'] = 'disabled'
+                elem['left_window']['value'] = 'créé'
+            elif elem['name'] == 'add_players':
+                elem['state'] = 'normal'
+
+    elif (name == 'add_players') & (tournament is not None):
+        if (len(tournament.players)==7):
+            for elem in states:
+                if elem['name'] == name:
+                    elem['state'] = 'disabled'
+                    elem['left_window']['value'] = '8/8'
+                elif elem['name'] == 'launch_round':
+                    elem['state'] = 'normal'
+
 
 
 def assign_info_to_model(name):
     """ assign the info send by gui to right model """
     if name == 'tournament_start':
         global tournament
-        tournament = Tournament
-        tournament.tournament_start = True
+        tournament = mod.Tournament()
+        for key, value in cf.labels_tournament_creation.items():
+            setattr(tournament, key, gui_information[value])
+
+    elif name == 'add_players':
+        player = mod.Player()
+        for key, value in cf.labels_add_players.items():
+            setattr(player, key, gui_information[value])
+        # add player to tournament.players list
+        tournament.players.append(player)
         for elem in states:
             if elem['name'] == name:
-                elem['state'] = 'disabled'
-            elif elem['name'] == 'add_players':
-                elem['state'] = 'normal'
+                elem['left_window']['value'] = '{}/8'.format(len(tournament.players))
+                break
 
-    write_menus_states(states)
 
-# def
 
 class Tournament(mod.Tournament):
     """ class to check the on-going of the tournament """
