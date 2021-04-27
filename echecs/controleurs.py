@@ -25,146 +25,184 @@ The best of half up is paired with the best of half down and so forth and so on 
 If necessary sort them again with their rank.
 """
 
-import time as t
 import json
+import os
+
+from tinydb import TinyDB
 
 import gui
-import config_v2 as cf
+import config as cf
 import modeles as mod
 
-
-states = cf.authorization
-gui_information = {}
+# initialize variables
+# tournament that will become an instance of Tournament modeles
 tournament = None
-player = None
+# states that will be the core of GUI - controller communication
+# for tournament steps control
+states = None
 
 
-def read_menus_states():
-    """ reads the states of the gui menus from a .txt file """
-    with open(cf.path_state_file, 'r') as f:
-        states_menus = json.load(f)
-    return states_menus
-
-
-def write_menus_states(menus_states):
-    """ write the states of the gui menus in a txt file """
-    with open(cf.path_state_file, 'w') as f:
-        json.dump(menus_states, f)
-
-
-def update_states():
-    """ update the states of the main menus to control the steps of the tournament """
-    states_menus = states
-    try:
-        states_menus = read_menus_states()
-    except FileNotFoundError:
-        print('pas de données sur STATES enregistrées')
-    return states_menus
-
-
-def receive_gui_tournament_info(info):
-    """ 1 - receive a dictionary from the gui functions
-        2 - update the states to know what steps of the tournament is active
-        3 - assign data to the correspondant variables"""
-    global states, gui_information
-    states = update_states()
-    gui_information = info
-    name = analyse_states_menus()
-    update_main_menus_states(name)
-    assign_info_to_model(name)
-    write_menus_states(states)
-
-
-def analyse_states_menus():
-    """ discover what step of the tournament is active
-    return the name of the step which is active"""
-    for elem in states:
-        if elem['state'] == 'normal':
-            return elem['name']
-
-
-def update_main_menus_states(name):
-    """ update the state of menus for main_window """
-    if name == 'tournament_start':
-        for elem in states:
-            if elem['name'] == name:
-                elem['state'] = 'disabled'
-                elem['left_window']['value'] = 'créé'
-            elif elem['name'] == 'add_players':
-                elem['state'] = 'normal'
-
-    elif (name == 'add_players') & (tournament is not None):
-        if (len(tournament.players)==7):
+class Controls:
+    """ control the tournament steps regarding the user inputs """
+    @classmethod
+    def verify_tournament_creation(cls, info):
+        """ verify tournament creation,
+         if tournament created, set the menus_states for next step of tournament
+         """
+        global tournament, states
+        # read the menus states sent by GUI
+        states = cls.read_menus_states()
+        # instructions regarding states
+        if tournament is not None:
+            print('tournoi déjà créé')
+            return {}
+        else:
+            # create tournament instance from modeles
+            tournament = mod.Tournament()
+            # set all the attributs regarding the user entries in the GUI
+            for key, value in cf.labels_tournament_creation.items():
+                setattr(tournament, key, info[value])
+            # set the menus states to be able to perform next step of tournament
             for elem in states:
-                if elem['name'] == name:
+                if elem['name'] == 'tournament_start':
                     elem['state'] = 'disabled'
-                    elem['left_window']['value'] = '8/8'
-                elif elem['name'] == 'launch_round':
+                    elem['left_window_value'] = 'créé'
+                elif elem['name'] == 'add_players':
                     elem['state'] = 'normal'
+            print("Le tournoi vient d'être créé")
+            print(tournament.__dict__)
+            # write the new menus states in the file to communicate with GUI
+            cls.write_menus_states(states)
 
-
-
-def assign_info_to_model(name):
-    """ assign the info send by gui to right model """
-    if name == 'tournament_start':
-        global tournament
-        tournament = mod.Tournament()
-        for key, value in cf.labels_tournament_creation.items():
-            setattr(tournament, key, gui_information[value])
-
-    elif name == 'add_players':
-        player = mod.Player()
-        for key, value in cf.labels_add_players.items():
-            setattr(player, key, gui_information[value])
-        # add player to tournament.players list
-        tournament.players.append(player)
+    @classmethod
+    def verify_players_creation(cls, info):
+        """ verify players creation when tournament (instance of Tournament modele) is already created,
+         - create Player model for each new player created by user and set its attributs regarding
+           the user entries in the GUI.
+         - set the menus_states for next step of tournament
+         """
+        all_players_created = False
         for elem in states:
-            if elem['name'] == name:
-                elem['left_window']['value'] = '{}/8'.format(len(tournament.players))
-                break
+            # while number fo players created by user is < than number of players defined in config file
+            if (elem['name'] == 'add_players') & (len(tournament.players) < cf.number_of_players):
+                player = mod.Player()
+                tournament.players.append(player)
+                for key, value in cf.labels_add_players.items():
+                    setattr(player, key, info[value])
+                setattr(player, 'id', len(tournament.players))
+                elem['left_window_value'] = '{}/{}'.format(len(tournament.players), cf.number_of_players)
+                if len(tournament.players) == cf.number_of_players:
+                    elem['state'] = 'disabled'
+                    for st in states:
+                        if st['name'] == 'launch_round':
+                            st['state'] = 'normal'
+                            break
+                    all_players_created = True
+        cls.write_menus_states(states)
+        return all_players_created
+
+    @classmethod
+    def verify_round_creation(cls, info):
+        """ verify round creation,
+         if round created, set the menus_states for next step of tournament
+         """
+        print('dans verify_round_creation:\n')
+        global tournament, states
+        # read the menus states sent by GUI
+        states = cls.read_menus_states()
+        # instructions regarding states
+        if len(tournament.rounds) < cf.number_of_rounds:
+            # create round instance from modeles and save it into the tournament variable
+            round_instance = mod.Round()
+            tournament.rounds.append(round_instance)
+            # set all the attributs regarding the user entries in the GUI
+            for key, value in cf.labels_round_creation.items():
+                setattr(round_instance, key, info[value])
+            # set the menus states to be able to perform next step of tournament
+            for elem in states:
+                if elem['name'] == 'launch_round':
+                    elem['state'] = 'disabled'
+                    elem['left_window_value'] = round_instance.name
+                elif elem['name'] == 'close_round':
+                    elem['state'] = 'normal'
+            print("Le tour vient d'être créé")
+            print(tournament.__dict__)
+            for elem in tournament.rounds:
+                print(elem.__dict__)
+            # write the new menus states in the file to communicate with GUI
+            cls.write_menus_states(states)
+
+        # elif len(tournament.rounds) == cf.number_of_rounds:
+        #     # create tournament instance from modeles
+        #     tournament = mod.Tournament()
+        #     # set all the attributs regarding the user entries in the GUI
+        #     for key, value in cf.labels_tournament_creation.items():
+        #         setattr(tournament, key, info[value])
+
+    @classmethod
+    def generate_matches(cls):
+        tournament.generate_pairs_swiss()
+
+    @classmethod
+    def delete_menus_states(cls):
+        """ delete the communication file between GUI and controller.
+        First function used in the program to start the GUI with no pre-existing data"""
+        try:
+            os.remove(cf.path_state_file)
+        except FileNotFoundError:
+            pass
+
+    @classmethod
+    def read_menus_states(cls):
+        """ reads the states from the communication file between GUI and controller """
+        with open(cf.path_state_file, 'r') as f:
+            states_menus = json.load(f)
+        return(states_menus)
+
+    @classmethod
+    def write_menus_states(cls, menus_states):
+        """ write the menus states into the communication file """
+        with open(cf.path_state_file, 'w') as f:
+            json.dump(menus_states, f)
 
 
+class DataBase:
+    """ use tinyDB bdd regarding client request to save and open data """
 
-class Tournament(mod.Tournament):
-    """ class to check the on-going of the tournament """
-    def __init__(self):
-        mod.Tournament.__init__(self)
-        # variables to check the on-going of each step of the tournament
-        # when the variable is set to False, it means that the step hasn't start yet, if it set to True
-        # then the step is on-going or complete
-        self.tournament_start = False
-        self.players_check = False
-        self.round_current_check = False
-        self.rounds_checks = [False, False, False, False, False, False, False, False]
-        self.tournament_end_check = False
-        # variables to generate automatic date & time for rounds
-        self.round_date_hours = []
-        self.date_time_format = "%d/%m/%Y - %H:%M:%S"
+    @classmethod
+    def create_data_base_and_tables(cls):
+        """ create a database file and the two corresponding tables as requeted
+        by the client """
+        db = TinyDB(cf.data_base_file_name)
+        for table in cf.list_tables:
+            db.table(table)
 
-    def __create_date_and_hour_of_new_round(self):
-        """ the user starts a new round  the program get the date and hour of its start"""
-        self.round_date_hours.append({'start': t.strftime(self.date_time_format, t.localtime())})
+    @classmethod
+    def clear_table(cls, table_name):
+        """ clear the table from data """
+        table_name.truncate()
 
-    def __generate_pairs_3(self):
-        """ private method : when all the players are entered by the user,
-        the program creates the pairs following the swiss system rules given by the client """
+    @classmethod
+    def insert_multiple_data(cls, table_name, data):
+        """ insert data in the table_name """
+        table_name.insert_multiple(data)
 
-    def __create_date_and_hour_for_finished_round(self):
-        """ at the end of the round, the user enter the scores for each match,
-        the program get the date and hour of its end """
-        self.round_date_hours.append({'end': t.strftime(self.date_time_format, t.localtime())})
-
-    def __calculate_total_score(self):
-        """ private method to automatically calculate total score
-        for each player of the tournament """
+    @classmethod
+    def get_all_data_from_database_table(cls, table_name):
+        """ get all the data contained in table_name as a list of dictionaries"""
+        print('dans get_all_data_from_database_table:\nIdentifier la structure du dico retourné '
+              'et entrer cette structure dans le docstring de la fonction')
+        return table_name.all()
 
 
-class OpenSaveTournament:
+class SaveOpenTournament:
 
-    def open_saved_tournament(self):
+    @classmethod
+    def open_saved_tournament(cls):
         """ open an already saved tournament """
 
-    def save_current_tournament(self):
+    @classmethod
+    def save_current_tournament(cls):
         """ save the current tournament """
 
 
@@ -175,4 +213,7 @@ class GenerateReports:
 
 
 if __name__ == "__main__":
+    # delete menus_state file if it exists to start the program with no pre-existing data
+    Controls.delete_menus_states()
+    # launch of GUI
     gui.MainWindow().mainloop()
