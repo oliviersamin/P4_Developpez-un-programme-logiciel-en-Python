@@ -209,6 +209,11 @@ class GenericWindow(tk.Frame):
         l2.grid(row=r, column=c + 1, rowspan=rsp, columnspan=csp, padx=px, pady=py)
         self.data.append({'name': name, 'tk_object': l2})
 
+    def my_simple_line(self, master, name, r, c, rsp, csp, px, py):
+        """ this method generates a line with a label   """
+        line = tk.Label(master=master, text=name, anchor='w')
+        line.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
+
     def my_data(self, master, name1, name2, r, c, rsp, csp, px, py):
         """ this method generates two lines with one label each """
         line1 = tk.Label(master=master, text=name1, anchor='w', font="Helvetica 12 bold")
@@ -220,6 +225,12 @@ class GenericWindow(tk.Frame):
         """ this method generates a button with a text and an action to perform when clicked"""
         b = tk.Button(master=master, text=name, command=action)
         b.grid(row=r, column=c, rowspan=1, columnspan=1, padx=10, pady=10)
+
+    def my_option_menu(self, master, choice_list, r, c, rsp, csp, px, py):
+        variable = tk.StringVar(master)
+        menu = tk.OptionMenu(master, variable, *choice_list)
+        menu.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
+        return variable
 
     def destroy_window(self):
         """ destroy the actual window and reset the containers """
@@ -233,7 +244,6 @@ class GenericWindow(tk.Frame):
         self.master.master.menus_states_for_controller_file = ct.Controls.read_menus_states()
         self.master.master.create_right_left_containers()
         LeftWindow.display_left_window(self.master.master)
-
 
     def test(self):
         """ to be deleted when program finished """
@@ -400,26 +410,65 @@ class LaunchRound(GenericWindow):
 
         # 3
         self.reset_window()
+        self.master.master.launch()
         self.display_round_information()
 
     def display_round_information(self):
         """ display the matches to be played during this round """
-        print('dans display_round_information:\n')
-        print('1 - generation des pairs\n2 - enregistrer les matches\n3 - afficher les matches')
-        ct.Controls.generate_matches()
+        matches = ct.Controls.generate_matches()
+        line = 1
+        title = cf.title_window_display_matches_of_round
+        self.my_simple_line(self.master, title, line, 1, 1, 1, 10, 10)
+        line += 1
+        for match in matches:
+            label = 'match {} : '.format(matches.index(match)+1) + match[0].first_name + ' ' + match[0].last_name + \
+                    ' vs ' + match[1].first_name + ' ' + match[1].last_name
+            self.my_simple_line(self.master, label, line, 0, 1, 3, 10, 10)
+            line +=1
 
 
 class CloseRound(GenericWindow):
     def __init__(self, master, **kwargs):
         GenericWindow.__init__(self, master, **kwargs)
-        self.display(master, ['john', 'papa', 'maman', 'luli', 'moi', 'papou', 'madou', 'jess'])
+        # self.lignes = [{'match': '', 'choix': ['match nul', ], 'results': None}, ....]
+        self.list_matches = []
+        self.lignes = []
+        # self.choix = ['match nul', 'player1', 'player2']
+        # self.list_matches = ['john vs papa', 'maman vs luli', 'moi vs papou', 'madou vs jess']
+        # self.affichage = []
+        # self.match_results = []
+        self.display(master)
 
-    def display(self, master, list_players):
-        """ displays  the window that allows the user to enter scores for the round that just stopped"""
-        for index, elem in enumerate(list_players):
-            self.my_line(master, elem, index, 0, 1, 1, 10, 10)
-        self.my_button(master, 'Valider les scores', 0, len(list_players)+1, self.validate_scores)
+    def display(self, master):
+        """ displays  the window that allows the user to enter the winners for the current round
+        GUI uses OptionMenu"""
 
-    def validate_scores(self):
+        # 1
+        self.list_matches = ct.Controls.get_current_matches()
+        print(self.list_matches)
+
+        # 2
+        for elem in self.list_matches:
+            p1 = elem.player1.first_name + ' ' + elem.player1.last_name
+            p2 = elem.player2.first_name + ' ' + elem.player2.last_name
+            match = p1 + ' vs ' + p2
+            self.lignes.append({'match': match, 'choice': ['match nul', p1, p2], 'result': None})
+        for index, elem in enumerate(self.lignes):
+            self.my_simple_line(master, elem['match'], index+1, 0, 1, 1, 10, 10)
+            elem['result'] = self.my_option_menu(master, elem['choice'], index + 1, 1, 1, 1, 10, 10)
+        self.my_button(master, 'Clôturer ce tour', 0, len(self.lignes)+1, self.end_round)
+
+    def end_round(self):
         """ method to save scores of one round """
-        print('VALIDATION DES SCORES à créer')
+        print('dans CloseRound - end_round:')
+        print('1 et 2 faits!')
+        print('3 - générer les scores du tournoi et les enregistrer')
+        print('4 - mettre à jour les menus pour créer un nouveau round')
+        print('5 - créer le time_end du round')
+
+        # verification OK
+        for elem in self.lignes:
+            print(elem['result'].get())
+
+
+

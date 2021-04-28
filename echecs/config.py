@@ -13,7 +13,7 @@ size_main = "550x300"
 size_tournament = "550x380"
 size_add_player = "550x350"
 size_left_window = "550x400"
-size_round_in_progress = "550x300"
+size_round_in_progress = "550x350"
 size_closing_round = "550x450"
 
 # ############################# config of the left window  ###################################
@@ -45,6 +45,7 @@ path_state_file = os.path.join(os.path.abspath(os.path.curdir), update_menus_fil
 # Tournament class in the modeles file
 number_of_players = 8
 number_of_rounds = 4
+title_window_display_matches_of_round = 'Matchs à jouer pour ce round'
 
 # fields for rounds and matches
 timeformat = '%d/%m/%Y - %H:%M'  # save the date and time with the following format 'day/month/year - hour:minutes'

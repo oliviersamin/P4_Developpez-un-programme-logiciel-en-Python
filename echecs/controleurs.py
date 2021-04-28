@@ -66,11 +66,9 @@ class Controls:
             for elem in states:
                 if elem['name'] == 'tournament_start':
                     elem['state'] = 'disabled'
-                    elem['left_window_value'] = 'créé'
+                    elem['left_window_value'] = tournament.name
                 elif elem['name'] == 'add_players':
                     elem['state'] = 'normal'
-            print("Le tournoi vient d'être créé")
-            print(tournament.__dict__)
             # write the new menus states in the file to communicate with GUI
             cls.write_menus_states(states)
 
@@ -98,6 +96,8 @@ class Controls:
                             st['state'] = 'normal'
                             break
                     all_players_created = True
+                    # for player in tournament.players:
+                    #     print(player.__dict__)
         cls.write_menus_states(states)
         return all_players_created
 
@@ -106,7 +106,6 @@ class Controls:
         """ verify round creation,
          if round created, set the menus_states for next step of tournament
          """
-        print('dans verify_round_creation:\n')
         global tournament, states
         # read the menus states sent by GUI
         states = cls.read_menus_states()
@@ -125,10 +124,6 @@ class Controls:
                     elem['left_window_value'] = round_instance.name
                 elif elem['name'] == 'close_round':
                     elem['state'] = 'normal'
-            print("Le tour vient d'être créé")
-            print(tournament.__dict__)
-            for elem in tournament.rounds:
-                print(elem.__dict__)
             # write the new menus states in the file to communicate with GUI
             cls.write_menus_states(states)
 
@@ -141,7 +136,14 @@ class Controls:
 
     @classmethod
     def generate_matches(cls):
-        tournament.generate_pairs_swiss()
+        matches = tournament.generate_pairs_swiss()
+        for match in matches:
+            tournament.rounds[-1].matches.append(mod.Match(match[0], match[1]))
+        return matches
+
+    @classmethod
+    def get_current_matches(cls):
+        return(tournament.rounds[-1].matches)
 
     @classmethod
     def delete_menus_states(cls):
@@ -157,7 +159,7 @@ class Controls:
         """ reads the states from the communication file between GUI and controller """
         with open(cf.path_state_file, 'r') as f:
             states_menus = json.load(f)
-        return(states_menus)
+        return states_menus
 
     @classmethod
     def write_menus_states(cls, menus_states):
