@@ -8,7 +8,7 @@ import os
 
 # ############### config of windows and main title  ##################################
 
-title_main_window = "Centre d'échecs"
+title_main_window = "Centre d'echecs"
 size_main = "550x300"
 size_tournament = "550x380"
 size_add_player = "550x350"
@@ -20,7 +20,10 @@ size_closing_round = "550x450"
 
 # for display_dictionary --> first key = tournament status,
 # second key = players registered, third key = round in progress
-display_dictionary = {'Statut tournoi': 'non créé', 'Joueurs': '0/8', 'Tour en cours': 'aucun'}
+# display_dictionary = {'Statut tournoi': 'non cree', 'Joueurs': '0/8', 'Tour en cours': 'aucun',
+# 'Tour cloture': 'aucun'}
+left_window_default_display = {'Tournoi': 'non cree', 'Joueurs': '0/8', 'Tour en cours': 'aucun'}
+
 # values to enter in the dictionary when user has completed steps
 # tournament created
 update_tournament = 'en cours'
@@ -45,7 +48,10 @@ path_state_file = os.path.join(os.path.abspath(os.path.curdir), update_menus_fil
 # Tournament class in the modeles file
 number_of_players = 8
 number_of_rounds = 4
-title_window_display_matches_of_round = 'Matchs à jouer pour ce round'
+title_window_display_matches_of_round = 'Matchs a jouer pour ce round'
+score_winner_match = 1
+score_loser_match = 0
+score_even_match = 0.5
 
 # fields for rounds and matches
 timeformat = '%d/%m/%Y - %H:%M'  # save the date and time with the following format 'day/month/year - hour:minutes'
@@ -54,7 +60,7 @@ labels_tournament_creation = {'name': 'Nom du tournoi', 'location': 'Lieu', 'dat
                               'round_number': 'Nombre de tours', 'time_control': 'Contrôle du temps',
                               'description': 'Description'}
 
-labels_add_players = {'last_name': 'Nom de famille', 'first_name': 'Prénom', 'date_of_birth': 'Date de naissance',
+labels_add_players = {'last_name': 'Nom de famille', 'first_name': 'Prenom', 'date_of_birth': 'Date de naissance',
                       'sexe': 'Sexe', 'rank': 'Classement'}
 
 labels_round_creation = {'name': 'nom du tour'}
@@ -64,3 +70,7 @@ data_base_file_name = 'db.json'
 table_players = 'players'
 table_tournament = 'tournament'
 list_tables = [table_tournament, table_players]
+
+# json file configuration
+json_file_name = 'program_state.json'
+json_file_path = os.path.join(os.path.abspath(os.path.curdir), json_file_name)
