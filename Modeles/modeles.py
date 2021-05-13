@@ -10,7 +10,7 @@ import config as cf
 
 
 class Tournament:
-    def __init__(self) -> None:
+    def __init__(self):
         self.name = ''
         self.location = ''
         self.date = ''
@@ -19,14 +19,16 @@ class Tournament:
         self.players = []
         self.time_control = ''  # ['bullet', 'blitz', 'coup rapide']
         self.description = ''
-        self.id = t.strftime('%d%m%Y%H%M', t.localtime())  # used for database identification
-
+        self.tournament_started = False
+        self.tournament_ended = False
 
     @property
     def serialize(self):
         """ serialize the instance into a dictionary """
         # serialize self.players
-        serialized = {}
+        dico = {}
+        for key, value in self.__dict__.items():
+            dico.update({key: value})
         players = []
         rounds = []
         if self.players is not []:
@@ -34,7 +36,7 @@ class Tournament:
                 players.append(elem.serialize_player())
         else:
             players = self.players
-
+        dico.update({'players': players})
         # serialize self.rounds
 
         if self.rounds is []:
@@ -42,12 +44,13 @@ class Tournament:
         else:
             for elem in self.rounds:
                 rounds.append(elem.serialize_round())
+        dico.update({'rounds': rounds})
+        return dico
+        # return {'name': self.name, 'location': self.location, 'date': self.date,
+        #         'round_number': self.round_number, 'time_control': self.time_control,
+        #         'description': self.description, 'rounds': rounds, 'players': players}
 
-        return {'name': self.name, 'location': self.location, 'date': self.date,
-                'round_number': self.round_number, 'time_control': self.time_control,
-                'description': self.description, 'rounds': rounds, 'players': players, 'id': self.id}
-
-    def generate_pairs_swiss(self):
+    def generate_pairs_swiss(self) -> list:
         """ generate pairs to create matches following the client requests
          1 - if round 1:
             a - sort players by rank
@@ -94,17 +97,22 @@ class Tournament:
         for key, value in serialized_tournament.items():
             if key == 'rounds':
                 result = []
-                for round in value:
+                for tour in value:
+                    # print('round = ', round)
                     r = Round()
-                    result.append(r.from_serialized_to_instance(round))
+                    r.from_serialized_to_instance(tour)
+                    # print(type(r), r.__dict__)
+                    result.append(r)
                 setattr(self, key, result)
             elif key == 'players':
                 result = []
                 for player in value:
                     p = Player()
-                    result.append(p.from_serialized_data_to_instance(player))
+                    p.from_serialized_data_to_instance(player)
+                    result.append(p)
                 setattr(self, key, result)
-            setattr(self, key, value)
+            else:
+                setattr(self, key, value)
 
 
 class Player:
@@ -130,9 +138,9 @@ class Player:
 
     def from_serialized_data_to_instance(self, serialized_data):
         """ create an instance from a serialized data entered in parameter """
-        print('dans create_instance_from_serialized_data A REPPRENDRE avec des setattr()')
         for key, value in serialized_data.items():
             setattr(self, key, value)
+
 
 class Match:
     """ model following the client requests """
@@ -164,13 +172,15 @@ class Match:
         for key, value in serialized_data.items():
             if (key == 'player1') or (key == 'player2'):
                 p = Player()
-                value = p.from_serialized_data_to_instance(value)
-                setattr(self, key, value)
+                p.from_serialized_data_to_instance(value)
+                # print(p)
+                setattr(self, key, p)
             elif key == 'results':
                 pass
             else:
                 setattr(self, key, value)
             self.results = ([self.player1, self.score_player1], [self.player2, self.score_player2])
+
 
 class Round:
     """  model following the client requests """
@@ -203,13 +213,15 @@ class Round:
         return {'name': self.name, 'time_start': self.time_start,
                 'time_end': self.time_end, 'matches': matches, 'closed': self.closed}
 
-
     def from_serialized_to_instance(self, serialized_data):
         """ transform serialized data from database into Round instance """
         for key, value in serialized_data.items():
             if key == 'matches':
                 result = []
                 for match in value:
-                    m = Match(Player(),Player())
-                    result.append(m.from_serialized_to_instance(match))
-            setattr(self, key, value)
+                    m = Match(Player(), Player())
+                    m.from_serialized_to_instance(match)
+                    result.append(m)
+                    setattr(self, key, result)
+            else:
+                setattr(self, key, value)

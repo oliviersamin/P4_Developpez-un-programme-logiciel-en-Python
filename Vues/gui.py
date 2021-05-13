@@ -7,6 +7,7 @@ import Controleurs.controleurs as ct
 
 class MainWindow(tk.Tk):
     """ main window of the GUI """
+
     def __init__(self):
         tk.Tk.__init__(self)
         # size of the several windows displayed during the program
@@ -26,13 +27,38 @@ class MainWindow(tk.Tk):
         self.frame_left = None
         self.frame_right = None
         self.menubar = None
+        self.window = None
         # get first order from controller at start of GUI
-        self.order = ct.Controls.send_order_to_gui()
+        # self.order = ct.Controls.send_order_to_gui()
         # display the GUI
-        if self.order == 'next_step':
-            self.list_instances_menus_tournament = Menu.initialize_menus_instances_tournament()
-            self.list_instances_menus_reports = Menu.initialize_menus_instances_reports()
-            self.launch()
+        # if self.order == 'next_step':
+        self.list_instances_menus_tournament = Menu.initialize_menus_instances_tournament()
+        self.list_instances_menus_reports = Menu.initialize_menus_instances_reports()
+        self.first_update_menus_tournament(ct.first_order)
+        self.launch()
+
+    def first_update_menus_tournament(self, order) -> None:
+        """ order is a dict coming from controller to display the right menus and windows at first start after
+        look into database tournament"""
+        for menu, state, value in zip(self.list_instances_menus_tournament, order['states'].values(),
+                                      order['left_window_values'].values()):
+            # print(menu,state)
+            menu.state = state
+            menu.left_window_value = value
+        try:
+            self.create_right_left_containers()
+            self.window = LaunchRound(master=self.frame_right, relaunch=order['data'], borderwidth=0, relief=tk.GROOVE)
+            self.window.grid(row=1, column=0, padx=10, pady=20)
+
+        except KeyError:
+            try:
+                self.create_right_left_containers()
+                self.window = CloseRound(master=self.frame_right, relaunch=order['display'], borderwidth=0,
+                                         relief=tk.GROOVE)
+                self.window.grid(row=1, column=0, padx=10, pady=20)
+
+            except KeyError:
+                pass
 
     def create_right_left_containers(self):
         """ create the containers where the windows are displayed """
@@ -60,11 +86,8 @@ class MainWindow(tk.Tk):
             self.menubar.add_cascade(label=elem['name'], menu=menu)
         self.config(menu=self.menubar)
 
-    def save_tournament(self):
-        """ save the tournament in its actual state """
-        ct.SaveOpenTournament.save_current_tournament()
-
-    def open_tournament(self):
+    @staticmethod
+    def open_tournament():
         """ open a tournament saved in database """
         print('open_tournament')
         ct.SaveOpenTournament.open_saved_tournament()
@@ -72,7 +95,6 @@ class MainWindow(tk.Tk):
     def test(self):
         """ while construction is in progress. MUST BE ERASED AT THE END"""
         print('methode test')
-
 
 
 class Menu:
@@ -100,7 +122,7 @@ class Menu:
         """ initialize the menus for the GUI, it is used by MainWindow to create menus"""
         tournament_start = Menu(name='tournament_start', label="Creer le tournoi", class_to_use=CreateNewTournament,
                                 size=cf.size_tournament,
-                                state='normal', left_window_label='Tournoi', left_window_value='non cree')
+                                state='disabled', left_window_label='Tournoi', left_window_value='non cree')
         add_players = Menu(name='add_players', label="Ajouter les joueurs", class_to_use=AddPlayers,
                            size=cf.size_add_player,
                            state='disabled', left_window_label='Joueurs',
@@ -150,11 +172,10 @@ class Menu:
                                                                       "self.list_instances_menus_tournament]: "
                                                                       "RightWindow.display_right_window(i)"}
                             for elem in instances_tournament]},
-                {'name': "ouvrir / sauvegarder le tournoi",
-                 'unfold': [{'label': "Ouvrir un tournoi sauvegarde", 'state': 'normal',
-                             'function': 'self.open_tournament'},
-                            {'label': "Sauvegarder le tournoi en cours", 'state': 'normal',
-                             'function': 'self.save_tournament'}]},
+                # {'name': "ouvrir / sauvegarder le tournoi",
+                #  'unfold': [{'label': "Ouvrir un tournoi sauvegarde", 'state': 'normal',
+                #              'function': 'self.open_tournament'},
+                #             ]},
                 {'name': "generer les rapports",
                  'unfold': [{'label': elem.label, 'state': elem.state,
                              'function': 'self.test'} for elem in instances_report]}]
@@ -172,7 +193,7 @@ class Menu:
                 if order['order'] == 'next_step':
                     elem.state = 'disabled'
                     elem.left_window_value = order['left_window_value']
-                    list_menus[index+1].state = 'normal'
+                    list_menus[index + 1].state = 'normal'
                     return list_menus
             elif (elem.name == 'add_players') & (elem.state == 'normal'):
                 if order['order'] == 'repeat_step':
@@ -181,7 +202,7 @@ class Menu:
                 elif order['order'] == 'next_step':
                     elem.left_window_value = order['left_window_value']
                     elem.state = 'disabled'
-                    list_menus[index+1].state = 'normal'
+                    list_menus[index + 1].state = 'normal'
                     return list_menus
             elif (elem.name == 'launch_round') & (elem.state == 'normal'):
                 elem.left_window_value = order['left_window_value']
@@ -192,16 +213,31 @@ class Menu:
                     elem.state = 'normal'
                     return list_menus
                 elif order['order'] == 'end_tournament':
+                    # print("order['order'] == 'end_tournament'")
+                    # list_menus[0].state = 'normal'
+                    return list_menus
+                else:
                     return list_menus
 
 
 class GenericWindow(tk.Frame):
     """ This class define generic commands for windows to be displayed inside the GUI"""
+
     def __init__(self, master, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
         self.data = []  # data with following structure {'name': <NAME>, 'tk_object': <tkObject>}
         self.attributs = {}
+        self.widgets = []
         self.menus_states = ct.states
+
+    def destroy_widgets(self):
+        """ destroy all the widgets in the display_round_information() method """
+        for elem in self.widgets:
+            try:
+                for el in elem:
+                    el.destroy()
+            except TypeError:
+                elem.destroy()
 
     def reset(self):
         for index, elem in enumerate(self.winfo_children()):
@@ -233,6 +269,7 @@ class GenericWindow(tk.Frame):
         """ this method generates a line with a label   """
         line = tk.Label(master=master, text=name, anchor='w')
         line.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
+        return line
 
     @staticmethod
     def my_data(master, name1, name2, r, c, rsp, csp, px, py):
@@ -240,13 +277,14 @@ class GenericWindow(tk.Frame):
         line1 = tk.Label(master=master, text=name1, anchor='w', font="Helvetica 12 bold")
         line1.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
         line2 = tk.Label(master=master, text=name2, anchor='w')
-        line2.grid(row=r+1, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
+        line2.grid(row=r + 1, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
 
     @staticmethod
     def my_button(master, name, c, r, action):
         """ this method generates a button with a text and an action to perform when clicked"""
         b = tk.Button(master=master, text=name, command=action)
         b.grid(row=r, column=c, rowspan=1, columnspan=1, padx=10, pady=10)
+        return b
 
     @staticmethod
     def my_button2(master, name, c, r, action):
@@ -260,7 +298,7 @@ class GenericWindow(tk.Frame):
         variable = tk.StringVar(master)
         menu = tk.OptionMenu(master, variable, *choice_list)
         menu.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
-        return variable
+        return variable, menu
 
     def destroy_window(self):
         """ destroy the actual window and reset the containers """
@@ -276,9 +314,15 @@ class RightWindow:
     """ displays a window inside a pre created right container.
      You must define the master, the class to use and the row and column to setup your
      window"""
+
     def __init__(self, size, class_to_use, master, row, column):
         """ initialize all the needed variables with parameters """
-        master.master.geometry(size)
+        try:
+            master.master.geometry(size)
+        except AttributeError:
+            # print ('GEOMETRY ISSUE: ', self)
+            # master.geometry(size)
+            pass
         self.window = class_to_use(master=master, borderwidth=0, relief=tk.GROOVE)
         self.window.grid(row=row, column=column, padx=10, pady=20)
 
@@ -298,9 +342,12 @@ class LeftWindow(GenericWindow):
     def __init__(self, master, **kwargs):
         """ initialize the variables needed and display the left window """
         GenericWindow.__init__(self, master, **kwargs)
-        self.values = cf.left_window_default_display
         # self.get_data()
         self.master = master
+        self.values = {}
+        for elem in self.master.master.list_instances_menus_tournament:
+            self.values.update({elem.left_window_label: elem.left_window_value})
+        # self.values = self.update_and_display(self.master.master.list_instances_menus_tournament)
         self.__display()
 
     def update_and_display(self, updated_data):
@@ -332,7 +379,7 @@ class CreateNewTournament(GenericWindow):
         labels = [value for value in cf.labels_tournament_creation.values()]
         for index, elem in enumerate(labels):
             self.my_line(self.master, elem, index, 0, 1, 1, 10, 10)
-        self.my_button(self.master, 'creer le tournoi', 0, len(labels)+1, self.create_new_tournament)
+        self.my_button(self.master, 'creer le tournoi', 0, len(labels) + 1, self.create_new_tournament)
 
     def create_new_tournament(self):  # TO BE MODIFIED
         """ 1 - gather all the user inputs and update the corresponding variable
@@ -359,8 +406,7 @@ class CreateNewTournament(GenericWindow):
         # order id a dictionary {'order': order, 'left_window_value': <value to display>}
         order = ct.Controls.verify_tournament_creation(self.attributs)
         self.master.master.list_instances_menus_tournament = Menu.update_menus_tournament(order, self.master)
-        self.master.master.left_window.update_and_display(
-            self.master.master.list_instances_menus_tournament)
+        self.master.master.left_window.update_and_display(self.master.master.list_instances_menus_tournament)
         # print('dans create_new_tournament, order = ', order)
         self.master.master.launch()
         # 3
@@ -369,6 +415,7 @@ class CreateNewTournament(GenericWindow):
 
 class AddPlayers(GenericWindow):
     """ create a window to add a new player to the tournament """
+
     def __init__(self, master, **kwargs):
         """ initialize variables """
         GenericWindow.__init__(self, master, **kwargs)
@@ -409,8 +456,7 @@ class AddPlayers(GenericWindow):
         # order = {'order': order, 'left_window_value': <value to display>}
         order = ct.Controls.verify_players_creation(self.attributs)
         self.master.master.list_instances_menus_tournament = Menu.update_menus_tournament(order, self.master)
-        self.master.master.left_window.update_and_display(
-            self.master.master.list_instances_menus_tournament)
+        self.master.master.left_window.update_and_display(self.master.master.list_instances_menus_tournament)
         # 3
         if order['order'] == 'repeat_step':
             self.display()
@@ -420,13 +466,16 @@ class AddPlayers(GenericWindow):
 
 
 class LaunchRound(GenericWindow):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, relaunch=None, **kwargs):
         GenericWindow.__init__(self, master, **kwargs)
         self.round_number = None
         self.master = master
-        self.display_matches_window = None
-        self.widgets = []
-        self.display_round_creation()
+        # self.widgets = []
+        self.relaunch = relaunch
+        if self.relaunch is not None:
+            self.display_round_information(self.relaunch)
+        else:
+            self.display_round_creation()
 
     def display_round_creation(self):
         """ displays  the window """
@@ -435,15 +484,6 @@ class LaunchRound(GenericWindow):
         for index, elem in enumerate(labels):
             self.widgets.append(self.my_line2(self.master, elem, index, 0, 1, 1, 10, 10))
         self.widgets.append(self.my_button2(self.master, 'creer le tour', 1, len(labels), self.create_new_round))
-
-    def destroy_widgets(self):
-        """ destroy all the widgets in the display_round_information() method """
-        for elem in self.widgets:
-            try:
-                for el in elem:
-                    el.destroy()
-            except TypeError:
-                elem.destroy()
 
     def create_new_round(self):
         """ create and launch the round
@@ -472,22 +512,26 @@ class LaunchRound(GenericWindow):
         self.destroy_widgets()
 
         # # 3
-        self.display_round_information()
+        matches = ct.Controls.generate_matches()
+        ct.Controls.save_round_matches()
+        self.display_round_information(matches)
 
-    def display_round_information(self):
+    def display_round_information(self, matches):
         """ display the matches to be played during this round """
         # self.display_matches_window_master = master2
-        matches = ct.Controls.generate_matches()
+        # matches = ct.Controls.generate_matches()
+
         line = 1
         title = cf.title_window_display_matches_of_round
         self.my_simple_line(self.master, title, line, 1, 1, 1, 10, 10)
         line += 1
         for match in matches:
-            label = 'match {} : '.format(matches.index(match)+1) + match[0].first_name + ' ' + match[0].last_name + \
+            label = 'match {} : '.format(matches.index(match) + 1) + match[0].first_name + ' ' + match[0].last_name + \
                     ' vs ' + match[1].first_name + ' ' + match[1].last_name
             self.my_simple_line(self.master, label, line, 0, 1, 3, 10, 10)
             line += 1
         self.my_button(self.master, 'Entrer les scores', 1, line, self.close_round)
+
         # self.master.master.last_window_created = self
 
     def close_round(self):
@@ -501,13 +545,17 @@ class LaunchRound(GenericWindow):
 
 
 class CloseRound(GenericWindow):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, relaunch=None, **kwargs):
         GenericWindow.__init__(self, master, **kwargs)
         # self.lignes = [{'match_instance': <Match instance>, 'label': '', 'choice': ['match nul', ],
         # 'result': None}, ....]
+        self.relaunch = relaunch
         self.lignes = []
         self.list_matches = []
-        self.display()
+        if self.relaunch is None:
+            self.display()
+        else:
+            self.display_rounds_result()
 
     def display(self):
         """ displays  the window that allows the user to enter the winners for the current round
@@ -520,17 +568,61 @@ class CloseRound(GenericWindow):
             self.lignes.append({'match_instance': elem, 'label': match, 'choice': ['match nul', p1, p2],
                                 'result': None})
         for index, elem in enumerate(self.lignes):
-            self.my_simple_line(self.master, elem['label'], index+1, 0, 1, 1, 10, 10)
-            elem['result'] = self.my_option_menu(self.master, elem['choice'], index + 1, 1, 1, 1, 10, 10)
-        self.my_button(self.master, 'Clôturer ce tour', 0, len(self.lignes)+1, self.end_round)
+            self.widgets.append(self.my_simple_line(self.master, elem['label'], index + 1, 0, 1, 1, 10, 10))
+            elem['result'], menu_option = self.my_option_menu(self.master, elem['choice'], index + 1, 1, 1, 1, 10, 10)
+            self.widgets.append(menu_option)
+        self.widgets.append(self.my_button(self.master, 'Clôturer ce tour', 0, len(self.lignes) + 1, self.save_scores))
 
-    def end_round(self):
+    def save_scores(self):
         """ method to save scores of one round """
         # generate scores for this round for all players and save it in the Match instances and create end_time of round
         # order = {'order': <order>, 'left_window_value': <value to display>}
-        order = ct.Controls.end_round(self.lignes)
+        order = ct.Controls.save_scores(self.lignes)
+        # order = ct.Controls.end_round(self.lignes)
         self.master.master.list_instances_menus_tournament = Menu.update_menus_tournament(order, self.master)
         self.master.master.left_window.update_and_display(
             self.master.master.list_instances_menus_tournament)
         self.master.master.launch()
-        self.destroy_window()
+        # self.destroy_window()
+        self.destroy_widgets()
+        self.display_rounds_result()
+
+    def display_rounds_result(self):
+        """ display the results of all the rounds played and the rank of each player """
+        print('dans display_rounds_result')
+        self.master.master.geometry("700x500")
+        order = ct.Controls.display_round_result()
+        self.my_simple_line(master=self.master, name=order['name'], r=0, c=1, rsp=1, csp=1, px=10, py=10)
+        # construct headers
+        headers = ['nom du joueur', 'total de points du tournoi', 'rang avant le tournoi']
+        for index, name in enumerate(headers):
+            self.my_simple_line(master=self.master, name=name, r=1, c=index, rsp=1, csp=1, px=10, py=10)
+        # construct one line for each player of tournament
+        lignes = []
+        for match in order['matches']:
+            lignes.append([])
+            lignes[-1].append(match.player1.first_name + ' ' + match.player1.last_name)
+            lignes[-1].append(match.player1.tournament_total_points)
+            lignes[-1].append(match.player1.rank)
+            lignes.append([])
+            lignes[-1].append(match.player2.first_name + ' ' + match.player2.last_name)
+            lignes[-1].append(match.player2.tournament_total_points)
+            lignes[-1].append(match.player2.rank)
+
+        for index, ligne in enumerate(lignes):
+            for ind, elem in enumerate(ligne):
+                self.my_simple_line(master=self.master, name=elem, r=1 + index + 1, c=ind, rsp=1, csp=1, px=10, py=10)
+        self.my_button(master=self.master, name='Fermer le tableau', c=1, r=100, action=self.action_to_do)
+
+    def action_to_do(self):
+        """ 1 - get from controller the next action to do
+         2 - close the whole window"""
+        # 1
+        order = ct.Controls.end_round()
+        print('dans action_to_do: ', order)
+        self.master.master.list_instances_menus_tournament = Menu.update_menus_tournament(order, self.master)
+        self.master.master.left_window.update_and_display(
+            self.master.master.list_instances_menus_tournament)
+        self.master.master.launch()
+        # 2
+        self.master.destroy()

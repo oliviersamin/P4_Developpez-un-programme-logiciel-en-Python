@@ -5,7 +5,6 @@ import os
 #               GUI CONFIG
 ########################################################################################
 
-
 # ############### config of windows and main title  ##################################
 
 title_main_window = "Centre d'echecs"
