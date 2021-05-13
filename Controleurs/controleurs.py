@@ -1,6 +1,6 @@
 """
 Project 4 of OpenClassRooms Cursus:
-'Developpez un programme logiciel en Python'
+'Développez un programme logiciel en Python'
 From the specs file the Tournament is going through the following steps:
 1 - the user creates a new tournament (enter data ...)
 2 - the user add 8 players (enter data fore each one)
@@ -35,7 +35,7 @@ import config as cf
 # initialize variables
 # states that will be the core of GUI - controller communication for tournament steps control
 states = None
-# first_order coreespond to data coming from database to launch the program at the right step to continue the tournament
+# first_order correspond to data coming from database to launch the program at the right step to continue the tournament
 first_order = {}
 # tables of database ('tournament' and 'players')
 tables = {}
@@ -44,13 +44,12 @@ tournament = mod.Tournament()
 
 
 class Controls:
-    """ control the tournament steps regarding the user inputs """
+    """ control the tournament steps by sending orders to GUI to display the right step at the right time only """
 
     @classmethod
-    def send_order_to_gui2(cls) -> str:
+    def send_order_to_gui(cls) -> str:
         """ send order to GUI so that it can update the states of the menus
-        regarding the order """
-        # print('dans send_order_to_gui: ', data, len(data['rounds']))
+        regarding the order and display the right information to continue tournament"""
         if tournament.tournament_started is False:
             return 'next_step'
         else:
@@ -75,107 +74,109 @@ class Controls:
          if tournament created, set the menus_states for next step of tournament
          """
         global tournament, states
+        # create tournament instance from models
         tournament = mod.Tournament()
-        if tournament.tournament_started is True:
-            print('tournoi deja cree')
+        if tournament.tournament_started is True:  # tournament already created by user
             return {}
         else:
-            # create tournament instance from modeles
-            # tournament = mod.Tournament()
             # set all the attributs regarding the user entries in the GUI
             for key, value in cf.labels_tournament_creation.items():
                 setattr(tournament, key, info[value])
             setattr(tournament, 'tournament_started', True)
-            # update the json file with all data of the actual tournament
-            # cls.update_json_file()
+            # save the data in the database
             SaveOpenTournament.save_current_tournament()
-            # create order to the GUI
-            order = cls.send_order_to_gui2()
+            # set the order to send to the GUI
+            order = cls.send_order_to_gui()
+            # return order and info to display in the left window
             return {'order': order, 'left_window_value': tournament.name}
 
     @classmethod
-    def verify_players_creation(cls, info):
-        """ verify players creation when tournament (instance of Tournament
-        modele) is already created,
+    def verify_players_creation(cls, info: dict) -> dict:
+        """ verify players creation when tournament (instance of Tournament model) is already created,
          - create Player model for each new player created by user and set
-         its attributs regarding
-           the user entries in the GUI.
+         its attributs regarding the user entries in the GUI.
          - set the menus_states for next step of tournament
          """
-        # while number fo players created by user is < than number of players defined in config file
+        # while number of players created by user is < than number of players defined in config file
         if len(tournament.players) < cf.number_of_players:
             player = mod.Player()
             tournament.players.append(player)
             for key, value in cf.labels_add_players.items():
                 setattr(player, key, info[value])
             setattr(player, 'id', len(tournament.players))
-            # cls.update_json_file()
+            # update tournament field in the database
             SaveOpenTournament.update_current_tournament()
+            # create a player field in the 'players' table of the database
             SaveOpenTournament.save_player(tournament.players[-1])
-            order = cls.send_order_to_gui2()
+            # set the order to the GUI
+            order = cls.send_order_to_gui()
+            # send order and data to display to the GUI
             return {'order': order, 'left_window_value': '{}/{}'.format(len(tournament.players), cf.number_of_players)}
-        else:
-            order = cls.send_order_to_gui2()
+        else:  # all the players have been created
+            # set the order to the GUI
+            order = cls.send_order_to_gui()
+            # send order and data to display to the GUI
             return {'order': order, 'left_window_value': '{}/{}'.format(len(tournament.players), cf.number_of_players)}
 
     @classmethod
-    def verify_round_creation(cls, info):
-        """ verify round creation,
-         if round created, set the menus_states for next step of tournament
-         """
+    def verify_round_creation(cls, info: dict) -> dict:
+        """ verify round creation, if round created, set the menus_states for next step of tournament and the data to
+        display in the left window """
         global tournament
-        if len(tournament.rounds) < cf.number_of_rounds:
-            # create round instance from modeles and save it into the tournament variable
+        # if not all rounds have been created
+        if len(tournament.rounds) < tournament.round_number:
+            # create round instance from model and save it into the tournament variable
             round_instance = mod.Round()
             tournament.rounds.append(round_instance)
             # set all the attributs regarding the user entries in the GUI
             for key, value in cf.labels_round_creation.items():
                 setattr(round_instance, key, info[value])
-            # cls.update_json_file()
+            # save the updated tournament instance in the database
             SaveOpenTournament.update_current_tournament()
-            order = cls.send_order_to_gui2()
+            # set the order to the GUI
+            order = cls.send_order_to_gui()
+            # send order and data to display to the GUI
             return {'order': order, 'left_window_value': round_instance.name}
 
     @classmethod
-    def save_round_matches(cls):
-        """ save the matches of the current round """
-        SaveOpenTournament.update_current_tournament()
-
-    @classmethod
-    def generate_matches(cls):
+    def generate_matches(cls) -> list:
+        """ when a round is created, matches are automatically created between players regarding the swiss-pair
+        algorithm and then added to tournament instance and saved into the database"""
         matches = tournament.generate_pairs_swiss()
         for match in matches:
             tournament.rounds[-1].matches.append(mod.Match(match[0], match[1]))
+        SaveOpenTournament.update_current_tournament()
         return matches
 
     @classmethod
-    def get_current_matches(cls):
+    def get_current_matches(cls) -> list:
+        """ used in the GUI to display the current matches if the round is not finished """
         return tournament.rounds[-1].matches
 
     @classmethod
     def save_scores(cls, data: list) -> dict:
-        """ execute all the needed tasks when a round is closed """
+        """ close a round when finished and set the time and date of end and the scores for each match """
+        # generate scores for each player regarding match results
         for elem in data:
             cls.set_match_scores(elem)
         # generate time_end attribut for Round instance and set self.closed attribut to True
         cls.create_time_end_for_round()
-        # update the menus to be able to create new round
-        # cls.update_json_file()
         if len(tournament.rounds) == tournament.round_number:
             tournament.tournament_ended = True
+        # update the database with the new data of the tournament instance
         SaveOpenTournament.update_current_tournament()
-        # order = cls.send_order_to_gui()
         return {'order': '', 'left_window_value': tournament.rounds[-1].name, 'matches': tournament.rounds[-1].matches}
 
     @classmethod
     def end_round(cls) -> dict:
-        """ execute all the needed tasks when a round is closed """
-        order = cls.send_order_to_gui2()
+        """ When a round is closed, set up and send order and data to display to the GUI """
+        order = cls.send_order_to_gui()
         return {'order': order, 'left_window_value': tournament.rounds[-1].name,
                 'matches': tournament.rounds[-1].matches}
 
     @staticmethod
     def display_round_result() -> dict:
+        """ at the end of a round, when it is closed, send data to display to GUI """
         return {'name': tournament.rounds[-1].name, 'matches': tournament.rounds[-1].matches}
 
     @classmethod
@@ -184,10 +185,12 @@ class Controls:
         to players match_dictionary = {'match_instance': <Match instance>,
         'label': '', 'choice': ['match nul', <player1>, <player2>],
         'result': str(<user choice>)}"""
+        # setup the players names
         p1 = match_dictionary['match_instance'].player1.first_name + ' ' + match_dictionary['match_instance']. \
             player1.last_name
         p2 = match_dictionary['match_instance'].player2.first_name + ' ' + match_dictionary['match_instance']. \
             player2.last_name
+        # comparaison to the winner of the match
         if p1 == match_dictionary['result'].get():
             match_dictionary['match_instance'].score_player1 = cf.score_winner_match
             match_dictionary['match_instance'].score_player2 = cf.score_loser_match
@@ -197,7 +200,7 @@ class Controls:
         else:
             match_dictionary['match_instance'].score_player1 = cf.score_even_match
             match_dictionary['match_instance'].score_player2 = cf.score_even_match
-        # write these info in the players attributs for next rounds and final score of tournament
+        # write these info in the players attributes for next rounds and final score of tournament
         match_dictionary['match_instance'].player1.tournament_total_points += match_dictionary['match_instance']. \
             score_player1
         match_dictionary['match_instance'].player1.opponents.append(match_dictionary['match_instance'].player2.id)
@@ -206,8 +209,8 @@ class Controls:
         match_dictionary['match_instance'].player2.opponents.append(match_dictionary['match_instance'].player1.id)
 
     @classmethod
-    def create_time_end_for_round(cls):
-        """ set the time_end attribut of current Round instance to actual time """
+    def create_time_end_for_round(cls) -> None:
+        """ method used when a round is closed"""
         tournament.rounds[-1].time_end = tournament.rounds[-1].generate_time()
         tournament.rounds[-1].closed = True
 
@@ -215,52 +218,33 @@ class Controls:
 class DataBase:
     """ use tinyDB bdd regarding client request to save and open data """
 
-    # @classmethod
-    # def get_tournament_id(cls, name):
-    #     """ get and return the current tournament id in the database table """
-    #     t_id = tables['tournament'].get(tournament.name = name)
-
-    # @classmethod
-    # def create_data_base_and_tables(cls):
-    #     """ create a database file and the two corresponding tables as requested
-    #     by the client """
-    #     global tables
-    #     db = TinyDB(cf.data_base_file_name)
-    #     tables = {'tournament': db.table(cf.table_tournament),
-    #               'players': db.table(cf.table_players)}
-    #     return tables
-
     @staticmethod
-    def create_data_base():
+    def create_data_base() -> None:
+        """ create the database and its tables if not created. It uses config file """
         global tables
         db = TinyDB(cf.data_base_file_name)
         tables = {'tournament': db.table(cf.table_tournament), 'players': db.table(cf.table_players)}
 
     @classmethod
-    def clear_table(cls, table_name):
-        """ clear the table from data """
-        table_name.truncate()
-
-    @classmethod
-    def insert_player(cls, player):
-        """ insert data in the table_name """
+    def insert_player(cls, player: object) -> None:
+        """ method used when a player is added to the tournament instance to add it also into the database """
         tables['players'].insert(player.serialize_player())
 
-    @classmethod
-    def insert_tournament(cls, table_name):
-        """ insert data in the table_name """
-        table_name.insert(tournament.serialize)
+    @staticmethod
+    def insert_tournament() -> None:
+        """ insert tournament instance serialized in the table 'tournament' of te database"""
+        tables['tournament'].insert(tournament.serialize)
 
     @classmethod
-    def get_last_data_from_database_table(cls, table_name) -> dict:
-        """ get all the data contained in table_name as a list of dictionaries"""
+    def get_last_data_from_database_table(cls, table_name: object) -> dict:
+        """ used to open the last tournament in the database and check if it is needed to finish it"""
         try:
             return table_name.all()[-1]
         except IndexError:
             return {}
 
     @classmethod
-    def update_last_data_in_database_table(cls, table_name, data_updated):
+    def update_last_data_in_database_table(cls, table_name: object, data_updated: dict) -> None:
         """ update the last data in the database table_name with updated data in parameter """
         data = Query()
         last_entry = cls.get_last_data_from_database_table(table_name)
@@ -268,78 +252,76 @@ class DataBase:
 
 
 class SaveOpenTournament:
-    """ used to do actions on database with tournament instance """
-
-    # tables = DataBase.create_data_base_and_tables()
+    """ Automatically save and open tournament instance to and from database """
 
     @classmethod
     def open_saved_tournament(cls) -> dict:
-        """ open an already saved tournament """
+        """ used only at first start of the program to check at what step the last tournament instance saved into
+         the database is. This method is used the method which_tournament_step
+         """
         global tournament
         data = DataBase.get_last_data_from_database_table(tables['tournament'])
         tournament = mod.Tournament()
-        if data != {}:
+        if data != {}:  # if the database is empty
             tournament.from_serialized_to_instance(data)
         else:
             pass
         return cls.which_tournament_step()
 
-    @classmethod
-    def which_tournament_step(cls) -> dict:
-        """ always get all states menus of the GUI to 'disabled' before launching this method,
-         and get left window value and menu = 'normal'"""
+    @staticmethod
+    def which_tournament_step() -> dict:
+        """ method used only for the first launch of the program to know if it must continue a tournament already
+        existing and save in the database but not finished or if it must start a new one, send dict to the GUI"""
         if tournament.tournament_ended is False:
             menus_states = {'tournament_start': 'disabled', 'add_players': 'disabled', 'launch_round': 'disabled'}
             left_window_values = {'Tournoi': tournament.name,
                                   'Joueurs': '{}/{}'.format(len(tournament.players), cf.number_of_players),
                                   'Tour en cours': 'aucun'}
-            if tournament.tournament_started is False:
+            if tournament.tournament_started is False:  # if the tournament instance has not been activated by user,
+                # start the GUI for a new tournament
                 menus_states['tournament_start'] = 'normal'
                 return {'states': menus_states, 'left_window_values': left_window_values}
 
-            elif len(tournament.players) < cf.number_of_players:
-                # print(tournament.__dict__)
-                # print('players à entrer: ', left_window_values)
+            elif len(tournament.players) < cf.number_of_players:  # if all the players have not been created
                 menus_states['add_players'] = 'normal'
                 return {'states': menus_states, 'left_window_values': left_window_values}
-            elif not tournament.rounds:
+            elif not tournament.rounds:  # if all players have been created but no round exists
                 left_window_values['Tour en cours'] = 'aucun'
                 menus_states['launch_round'] = 'normal'
                 return {'states': menus_states, 'left_window_values': left_window_values}
-            elif len(tournament.rounds) < tournament.round_number:
-                print('dans len(tournament.rounds) < tournament.round_number:')
-                if tournament.rounds[-1].closed is False:
+            elif len(tournament.rounds) < tournament.round_number:  # if not all the rounds have been created
+                if tournament.rounds[-1].closed is False:  # if the last round is not finished
                     left_window_values['Tour en cours'] = tournament.rounds[-1].name
                     menus_states['launch_round'] = 'disabled'
                     matches = [(match.player1, match.player2) for match in tournament.rounds[-1].matches]
                     return {'states': menus_states, 'left_window_values': left_window_values, 'data': matches}
-                else:
+                else:  # if the last round is finished
                     left_window_values['Tour en cours'] = 'aucun'
                     menus_states['launch_round'] = 'disabled'
                     return {'states': menus_states, 'left_window_values': left_window_values, 'display': {}}
             elif len(tournament.rounds) == tournament.round_number and tournament.rounds[-1].closed is False:
+                # if all the rounds have been created but the last one is not yet finished
                 left_window_values['Tour en cours'] = tournament.rounds[-1].name
                 menus_states['launch_round'] = 'normal'
                 matches = [(match.player1, match.player2) for match in tournament.rounds[-1].matches]
                 return {'states': menus_states, 'left_window_values': left_window_values, 'data': matches}
-        else:
+        else:  # if the tournament is finished
             menus_states = {'tournament_start': 'normal', 'add_players': 'disabled', 'launch_round': 'disabled'}
             left_window_values = {'Tournoi': 'aucun', 'Joueurs': '0/8', 'Tour en cours': 'aucun'}
             return {'states': menus_states, 'order': 'repeat_step', 'left_window_values': left_window_values}
 
     @staticmethod
-    def save_current_tournament():
-        """ save the current tournament and the players for the first time in the database """
-        # global tables
-        DataBase.insert_tournament(tables['tournament'])
-        # DataBase.insert_players(tables['players'])
+    def save_current_tournament() -> None:
+        """ save the current tournament for the first time in the database """
+        DataBase.insert_tournament()
 
     @staticmethod
-    def save_player(player):
+    def save_player(player) -> None:
+        """ used each time a new player is created by user """
         DataBase.insert_player(player)
 
-    @classmethod
-    def update_current_tournament(cls):
+    @staticmethod
+    def update_current_tournament():
         """ update the last tournament inside the database """
         DataBase.update_last_data_in_database_table(tables['tournament'], tournament.serialize)
 
@@ -356,13 +338,10 @@ def run():
     global first_order
     # 1- create the database and tables if does not exists
     DataBase.create_data_base()
-    # 2 - read teh database to search for the last tournament and check if it's finished or not
+    # 2 - read the database to search for the last tournament and check if it's finished or not, return an order for
+    # the GUI
     first_order = SaveOpenTournament.open_saved_tournament()
-    # Controls.update_json_file()
-    # # 3 - send the first order to gui to display or the unfinished tournament in the database or a new one
-    # (if finished)
-    # Controls.send_order_to_gui()
-    # 4 - launch the GUI
+    # 3 - launch the GUI
     gui.MainWindow().mainloop()
 
 
