@@ -1,3 +1,5 @@
+""" module that generates the GUI """
+
 import tkinter as tk
 
 import config as cf
@@ -9,14 +11,14 @@ class MainWindow(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         # size of the several windows displayed during the program
-        self.size_main = cf.size_main
-        self.size_tournament = cf.size_tournament
-        self.size_add_player = cf.size_add_player
-        self.size_left_window = cf.size_left_window
-        self.size_round_in_progress = cf.size_round_in_progress
-        self.size_closing_round = cf.size_closing_round
+        self.size_main = cf.SIZE_MAIN
+        self.size_tournament = cf.SIZE_TOURNAMENT
+        self.size_add_player = cf.SIZE_ADD_PLAYER
+        self.size_left_window = cf.SIZE_LEFT_WINDOW
+        self.size_round_in_progress = cf.SIZE_ROUND_IN_PROGRESS
+        self.size_closing_round = cf.SIZE_CLOSING_ROUND
         # title of the main window
-        self.title(cf.title_main_window)
+        self.title(cf.TITLE_MAIN_WINDOW)
         # apply the size of the main window at start
         self.geometry(self.size_main)
         # initializing needed variables
@@ -28,7 +30,7 @@ class MainWindow(tk.Tk):
         self.window = None
         self.list_instances_menus_tournament = Menu.initialize_menus_instances_tournament()
         self.list_instances_menus_reports = Menu.initialize_menus_instances_reports()
-        self.first_update_menus_tournament(ct.first_order)
+        self.first_update_menus_tournament(ct.FIRST_ORDER)
         # displays the main window and its widgets
         self.launch()
 
@@ -76,7 +78,9 @@ class MainWindow(tk.Tk):
             menu = tk.Menu(self.menubar, tearoff=0)
             for el in elem['unfold']:
                 menu.add_command(label=el['label'], state=el['state'],
-                                 command=eval(el['function'], {'RightWindow': RightWindow, 'self': self}))
+                                 command=eval(el['function'], {'RightWindow': RightWindow, 'self': self, 'ct': ct,
+                                                               'ChooseTournamentForReport':
+                                                                   ChooseTournamentForReport}))
             self.menubar.add_cascade(label=elem['name'], menu=menu)
         self.config(menu=self.menubar)
 
@@ -89,7 +93,7 @@ class MainWindow(tk.Tk):
 class Menu:
     """ Generate each menu to be displayed in the GUI and manage all the operations to
      perform on them"""
-    def __init__(self, name, label, class_to_use, size, state, left_window_label, left_window_value):
+    def __init__(self, name, label, class_to_use, size, state, left_window_label=None, left_window_value=None):
         """ initialize a Menu instance with parameters """
         self.name = name
         self.label = label
@@ -103,43 +107,41 @@ class Menu:
     def initialize_menus_instances_tournament() -> list:
         """ initialize the menus link with tournament steps for the GUI, it is used by MainWindow to create menus"""
         tournament_start = Menu(name='tournament_start', label="Créer le tournoi", class_to_use=CreateNewTournament,
-                                size=cf.size_tournament,
+                                size=cf.SIZE_TOURNAMENT,
                                 state='disabled', left_window_label='Tournoi', left_window_value='non cree')
         add_players = Menu(name='add_players', label="Ajouter les joueurs", class_to_use=AddPlayers,
-                           size=cf.size_add_player,
+                           size=cf.SIZE_ADD_PLAYER,
                            state='disabled', left_window_label='Joueurs',
-                           left_window_value='0/{}'.format(cf.number_of_players))
+                           left_window_value='0/{}'.format(cf.NUMBER_OF_ROUNDS))
         launch_round = Menu(name='launch_round', label="Lancer le tour", class_to_use=LaunchRound,
-                            size=cf.size_round_in_progress,
+                            size=cf.SIZE_ROUND_IN_PROGRESS,
                             state='disabled', left_window_label='Tour en cours', left_window_value='aucun')
-        return [tournament_start, add_players, launch_round]  # , close_round]
+        return [tournament_start, add_players, launch_round]
 
     @staticmethod
     def initialize_menus_instances_reports() -> list:
-        """ initialize the menus linked with reports generation for the GUI, it is used by MainWindow to create menus"""
+        """ initialize the menus linked with reports generation for the GUI, it is used by MainWindow
+        to create menus"""
         list_all_actors = Menu(name='list_all_actors', label="liste de tous les acteurs",
-                               class_to_use=ct.GenerateReports,
-                               size=cf.size_tournament,
-                               state='disabled', left_window_label='report', left_window_value='report')
-        list_all_players_current_tournament = Menu(name='list_all_players_current_tournament',
-                                                   label="liste des joueurs du tournoi actuel",
-                                                   class_to_use=ct.GenerateReports,
-                                                   size=cf.size_add_player, state='disabled',
-                                                   left_window_label='report', left_window_value='report')
+                               class_to_use=ChooseTournamentForReport,
+                               size=cf.SIZE_TOURNAMENT,
+                               state='normal')
+        list_all_players_of_tournament = Menu(name='list_all_players_of_tournament',
+                                              label="liste des joueurs d'un tournoi",
+                                              class_to_use=ChooseTournamentForReport,
+                                              size=cf.SIZE_ADD_PLAYER, state='normal')
         list_all_tournaments = Menu(name='list_all_tournaments', label="liste de tous les tournois",
-                                    class_to_use=ct.GenerateReports, size=cf.size_round_in_progress,
-                                    state='disabled', left_window_label='report', left_window_value='report')
+                                    class_to_use=ChooseTournamentForReport, size=cf.SIZE_ROUND_IN_PROGRESS,
+                                    state='normal')
         list_all_rounds_of_tournament = Menu(name='list_all_rounds_of_tournament',
                                              label="liste de tous les tours d'un tournoi",
-                                             class_to_use=ct.GenerateReports, size=cf.size_closing_round,
-                                             state='disabled', left_window_label='report',
-                                             left_window_value='report')
+                                             class_to_use=ChooseTournamentForReport, size=cf.SIZE_CLOSING_ROUND,
+                                             state='normal')
         list_all_matches_of_tournament = Menu(name='list_all_matches_of_tournament',
                                               label="liste de tous les matchs d'un tournoi",
-                                              class_to_use=ct.GenerateReports, size=cf.size_closing_round,
-                                              state='disabled', left_window_label='report',
-                                              left_window_value='report')
-        return [list_all_actors, list_all_players_current_tournament, list_all_tournaments,
+                                              class_to_use=ChooseTournamentForReport, size=cf.SIZE_CLOSING_ROUND,
+                                              state='normal')
+        return [list_all_actors, list_all_tournaments, list_all_players_of_tournament,
                 list_all_rounds_of_tournament, list_all_matches_of_tournament]
 
     @staticmethod
@@ -153,7 +155,9 @@ class Menu:
                             for elem in instances_tournament]},
                 {'name': "générer les rapports",
                  'unfold': [{'label': elem.label, 'state': elem.state,
-                             'function': 'self.test'} for elem in instances_report]}]
+                             'function': "lambda i= '" +
+                                         elem.name + "': ChooseTournamentForReport(self.frame_right, i)"}
+                            for elem in instances_report]}]
 
     @staticmethod
     def update_menus_tournament(order: dict, master: object) -> list:
@@ -202,7 +206,7 @@ class GenericWindow(tk.Frame):
         self.data = []  # data with following structure {'name': <NAME>, 'tk_object': <tkObject>}
         self.attributs = {}
         self.widgets = []
-        self.menus_states = ct.states
+        self.menus_states = ct.STATES
 
     def destroy_widgets(self) -> None:
         """ destroy all the widgets of the window """
@@ -270,18 +274,13 @@ class GenericWindow(tk.Frame):
         self.master.destroy()
         self.master.master.create_right_left_containers()
 
-    @staticmethod
-    def test():
-        """ to be deleted when program finished """
-        print('test')
-
 
 class RightWindow:
     """ displays a window inside a pre created right container.
      You must define the master, the class to use and the row and column to setup your
      window"""
 
-    def __init__(self, size, class_to_use, master, row, column):
+    def __init__(self, size, class_to_use, master, row, column, report=None):
         """ initialize all the needed variables with parameters """
         try:
             master.master.geometry(size)
@@ -296,7 +295,12 @@ class RightWindow:
         entry : list with following data [name, master, list_instances_menus_tournament]"""
         for elem in list_instances[2]:
             if elem.name == list_instances[0]:
-                cls(size=elem.size, class_to_use=elem.class_to_use, master=list_instances[1], row=1, column=0)
+                # try:
+                cls(size=elem.size, class_to_use=elem.class_to_use, master=list_instances[1], row=1, column=0,
+                    report=elem.name)
+                #     print('dans try')
+                # except IndexError:
+                #     cls(size=elem.size, class_to_use=elem.class_to_use, master=list_instances[1], row=1, column=0)
 
 
 class LeftWindow(GenericWindow):
@@ -337,7 +341,7 @@ class CreateNewTournament(GenericWindow):
 
     def display(self) -> None:
         """ displays  the window """
-        labels = [value for value in cf.labels_tournament_creation.values()]
+        labels = [value for value in cf.LABELS_TOURNAMENT_CREATION.values()]
         for index, elem in enumerate(labels):
             self.my_line(self.master, elem, index, 0, 1, 1, 10, 10)
         self.my_button(self.master, 'créer le tournoi', 0, len(labels) + 1, self.create_new_tournament)
@@ -359,7 +363,7 @@ class CreateNewTournament(GenericWindow):
                         if v.get() != '':
                             value = v.get()
                         else:
-                            value = cf.number_of_rounds
+                            value = cf.NUMBER_OF_ROUNDS
                     else:
                         value = v.get()
             self.attributs.update({key: value})
@@ -392,7 +396,7 @@ class AddPlayers(GenericWindow):
     def display(self) -> None:
         """ displays  the window """
         self.reset_variables()
-        labels = [value for value in cf.labels_add_players.values()]
+        labels = [value for value in cf.LABELS_ADD_PLAYERS.values()]
         for index, elem in enumerate(labels):
             self.my_line(self.master, elem, index, 0, 1, 1, 10, 10)
         self.my_button(self.master, 'ajouter le joueur', 1, len(labels) + 1, self.add_new_player)
@@ -440,7 +444,7 @@ class LaunchRound(GenericWindow):
 
     def display_round_creation(self) -> None:
         """ displays  the window to create the round"""
-        labels = [value for value in cf.labels_round_creation.values()]
+        labels = [value for value in cf.LABELS_ROUND_CREATION.values()]
         for index, elem in enumerate(labels):
             self.widgets.append(self.my_line2(self.master, elem, index, 0, 1, 1, 10, 10))
         self.widgets.append(self.my_button(self.master, 'créer le tour', 1, len(labels), self.create_new_round))
@@ -478,7 +482,7 @@ class LaunchRound(GenericWindow):
         """ display the matches to be played during this round """
         line = 1
         # displaying title
-        title = cf.title_window_display_matches_of_round
+        title = cf.TITLE_WINDOW_DISPLAY_MATCHES_OF_ROUND
         self.my_simple_line(self.master, title, line, 1, 1, 1, 10, 10)
         line += 1
         # displaying one match by line
@@ -495,7 +499,7 @@ class LaunchRound(GenericWindow):
         self.destroy_window()
         self.master.master.launch()
         menu = Menu(name='close_round', label='Clôturer le tour', class_to_use=CloseRound,
-                    size=cf.size_closing_round, state='disabled',
+                    size=cf.SIZE_CLOSING_ROUND, state='disabled',
                     left_window_label='Tour termine', left_window_value='aucun')
         RightWindow.display_right_window(['close_round', self.master.master.frame_right, [menu]])
 
@@ -535,8 +539,8 @@ class CloseRound(GenericWindow):
 
     def save_scores(self) -> None:
         """ method to save scores of one round """
-        # generate scores for this round for all players and save it in the Match instances and create end_time of round
-        # order = {'order': <order>, 'left_window_value': <value to display>}
+        # generate scores for this round for all players and save it in the Match instances and create end_time
+        # of round order = {'order': <order>, 'left_window_value': <value to display>}
         order = ct.Controls.save_scores(self.lignes)
         # order = ct.Controls.end_round(self.lignes)
         self.master.master.list_instances_menus_tournament = Menu.update_menus_tournament(order, self.master)
@@ -582,8 +586,49 @@ class CloseRound(GenericWindow):
         # 1
         order = ct.Controls.end_round()
         self.master.master.list_instances_menus_tournament = Menu.update_menus_tournament(order, self.master)
-        self.master.master.left_window.update_and_display(
-            self.master.master.list_instances_menus_tournament)
+        self.master.master.left_window.update_and_display(self.master.master.list_instances_menus_tournament)
         self.master.master.launch()
         # 2
+        self.master.destroy()
+
+
+class ChooseTournamentForReport(GenericWindow):
+    """ used to display the choice of the tournament to use for the report """
+    def __init__(self, master, option, **kwargs):
+        """ initialize variables """
+        GenericWindow.__init__(self, master, **kwargs)
+        self.choice = None
+        self.title = 'Sélectionner le tournoi :'
+        self.label_line = 'Choisir le tournoi'
+        self.tournament = None
+        self.name = option
+        self.filtres = ['list_all_actors', 'list_all_tournaments']
+        self.report = ct.GenerateReports
+        if self.name in self.filtres:
+            self.report(self.name)
+        else:
+            self.get_tournament_names_from_controller()
+            self.__display()
+
+    def get_tournament_names_from_controller(self) -> None:
+        """ get data from controller to display the tournaments """
+        # self.choice = ct.GenerateReports(self.name).get_tournament_names_for_gui()
+        self.choice = self.report(self.name).get_tournament_names_for_gui()
+
+    def __display(self) -> None:
+        """ display the window """
+        self.top = tk.Toplevel(self.master)
+        self.top.grid()
+        # title
+        self.my_simple_line(self.top, self.label_line, 1, 0, 1, 1, 10, 10)
+        # choice of tournament
+        self.my_simple_line(self.top, self.title, 2, 0, 1, 1, 10, 10)
+        self.tournament, menu_option = self.my_option_menu(self.top, self.choice, 2, 1, 1, 1, 10, 10)
+        # display the button to go through next step of tournament
+        self.my_button(self.top, 'Valider', 0, 3, self.__validate)
+
+    def __validate(self):
+        """  """
+        self.report(self.name).receive_info_from_gui(self.tournament.get())
+        self.master.master.launch()
         self.master.destroy()
