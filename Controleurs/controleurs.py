@@ -30,6 +30,7 @@ import os
 import csv
 
 from tinydb import TinyDB, Query
+from operator import attrgetter
 
 import Vues.gui as gui
 import Modeles.modeles as mod
@@ -403,7 +404,8 @@ class GenerateReports:
                 if key not in filters:
                     dico.update({key: value})
             all_tournaments.append(dico)
-        self.create_file(all_tournaments)
+        if all_tournaments:
+            self.create_file(all_tournaments)
 
     def create_all_actors_data_file(self) -> None:
         """ generate a report with all data of all players for all tournaments """
@@ -415,7 +417,15 @@ class GenerateReports:
                 if key not in filters:
                     dico.update({key: value})
             all_players.append(dico)
-        self.create_file(all_players)
+            # sort by alphabetic order and add '_alphabetic_order' at the file title
+        if all_players:
+            sorted_players_name = sorted(all_players, key=self.sort_results_name)
+            file_name = self.file_name
+            self.file_name = self.file_name[:-4] + '_name' + self.file_name[-4:]
+            self.create_file(sorted_players_name)
+            sorted_players_rank = sorted(all_players, key=self.sort_results_rank)
+            self.file_name = file_name[:-4] + '_rank' + file_name[-4:]
+            self.create_file(sorted_players_rank)
 
     def create_all_players_tournament(self) -> None:
         """ generate a report with all data of all players for one tournament """
@@ -428,9 +438,16 @@ class GenerateReports:
                         if key != 'opponents':
                             dico.update({key: value})
                     players.append(dico)
-        self.create_file(players)
+        if players:
+            file_name = self.file_name
+            sorted_players_name = sorted(players, key=self.sort_results_name)
+            self.file_name = self.file_name[:-4] + '_name' + self.file_name[-4:]
+            self.create_file(sorted_players_name)
+            sorted_players_rank = sorted(players, key=self.sort_results_rank)
+            self.file_name = file_name[:-4] + '_rank' + file_name[-4:]
+            self.create_file(sorted_players_rank)
 
-    def create_all_rounds_tournament(self) -> None:
+    def create_all_rounds_tournament(self):
         """ generate a report with all data of all rounds for one tournament (apart from matches)"""
         rounds = []
         for tournament_instance in self.tournaments_list:
@@ -443,7 +460,8 @@ class GenerateReports:
                         if key not in ['matches', 'closed']:
                             dico.update({key: value})
                     rounds.append(dico)
-        self.create_file(rounds)
+        if rounds:
+            self.create_file(rounds)
 
     def create_all_matches_tournament(self) -> None:
         """ generate a report with all data of all matches for one tournament"""
@@ -460,12 +478,21 @@ class GenerateReports:
                         _match.update({'round': _round['name'], 'player1': p1_name, 'score_player1': p1_score,
                                        'player2': p2_name, 'score_player2': p2_score})
                         matches.append(_match)
-        self.create_file(matches)
+        if matches:
+            self.create_file(matches)
+
+    def sort_results_name(self, item):
+        return(item['last_name'].lower(), item['first_name'].lower())
+
+    def sort_results_rank(self, item):
+        return(str(item['rank']), item['last_name'].lower(), item['first_name'].lower())
+
 
     def create_file(self, data: list) -> None:
         """ create the file to be read with data """
         self.path_to_file = os.path.join(self.path_to_folder, self.file_name)
         # create headers
+        self.headers = []
         for key in data[0].keys():
             self.headers.append(key)
         with open(self.path_to_file, 'w', newline='') as csv_file:

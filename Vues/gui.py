@@ -1,6 +1,8 @@
 """ module that generates the GUI """
 
+import os
 import tkinter as tk
+import tkinter.messagebox as msg
 
 import config as cf
 import Controleurs.controleurs as ct
@@ -598,14 +600,20 @@ class ChooseTournamentForReport(GenericWindow):
         """ initialize variables """
         GenericWindow.__init__(self, master, **kwargs)
         self.choice = None
+        self.top = tk.Toplevel(self.master)
         self.title = 'Sélectionner le tournoi :'
         self.label_line = 'Choisir le tournoi'
+        self.message_path_to_folder = 'Le rapport est dans le dossier \n' + \
+                                      os.path.join(os.path.abspath(os.path.curdir), 'Reports')
         self.tournament = None
         self.name = option
         self.filtres = ['list_all_actors', 'list_all_tournaments']
         self.report = ct.GenerateReports
         if self.name in self.filtres:
             self.report(self.name)
+            msg.showinfo(title=None, message=self.message_path_to_folder)
+            self.master.destroy()
+            self.master.master.launch()
         else:
             self.get_tournament_names_from_controller()
             self.__display()
@@ -617,18 +625,21 @@ class ChooseTournamentForReport(GenericWindow):
 
     def __display(self) -> None:
         """ display the window """
-        self.top = tk.Toplevel(self.master)
+        # self.top = tk.Toplevel(self.master)
         self.top.grid()
         # title
         self.my_simple_line(self.top, self.label_line, 1, 0, 1, 1, 10, 10)
+        # # path to folder where reports are stored
+        # self.my_simple_line(self.top, self.message_path_to_folder, 2, 0, 1, 1, 10, 10)
         # choice of tournament
-        self.my_simple_line(self.top, self.title, 2, 0, 1, 1, 10, 10)
-        self.tournament, menu_option = self.my_option_menu(self.top, self.choice, 2, 1, 1, 1, 10, 10)
+        self.my_simple_line(self.top, self.title, 3, 0, 1, 1, 10, 10)
+        self.tournament, menu_option = self.my_option_menu(self.top, self.choice, 3, 1, 1, 1, 10, 10)
         # display the button to go through next step of tournament
-        self.my_button(self.top, 'Valider', 0, 3, self.__validate)
+        self.my_button(self.top, 'Valider', 0, 4, self.__validate)
 
     def __validate(self):
-        """  """
+        """ create the report with info selected by user """
         self.report(self.name).receive_info_from_gui(self.tournament.get())
+        msg.showinfo(title=None, message=self.message_path_to_folder)
         self.master.master.launch()
         self.master.destroy()

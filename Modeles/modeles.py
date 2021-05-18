@@ -35,14 +35,14 @@ class Tournament:
         players = []
         rounds = []
         # serialize and update self.players in dico
-        if self.players != []:
+        if self.players:
             for elem in self.players:
                 players.append(elem.serialize_player())
         else:
             players = self.players
         dico.update({'players': players})
         # serialize and update self.rounds in dico
-        if self.rounds == []:
+        if not self.rounds:
             rounds = self.rounds
         else:
             for elem in self.rounds:
@@ -75,14 +75,12 @@ class Tournament:
             return matches
 
         elif (len(self.rounds) > 1) & (len(self.rounds) <= int(self.round_number)):
-            print('dans generate_pairs_swiss, round >1 et <{}:\n'.format(self.round_number))
             # sort the players by total points and then by rank if needed
             sorted_players = sorted(self.players, key=attrgetter("tournament_total_points", "rank"), reverse=True)
             first_half = sorted_players[:4]
             second_half = sorted_players[4:]
             # select an opponent that has not been played so far
-            print('vérifier players n ont pas deja joue ensemble A FAIRE')
-            for index, p_fh  in enumerate(first_half):
+            for index, p_fh in enumerate(first_half):
                 num = len(p_fh.opponents)
                 for ind, p_sh in enumerate(second_half):
                     if p_sh.id not in p_fh.opponents:
@@ -92,10 +90,6 @@ class Tournament:
                         break
                 if num == len(p_fh.opponents):
                     print('prendre un joueur dans la liste first_half')
-
-
-            # create matches
-            # matches = [(player_fh, player_sh) for player_fh, player_sh in zip(first_half, second_half)]
             return matches
 
         else:
