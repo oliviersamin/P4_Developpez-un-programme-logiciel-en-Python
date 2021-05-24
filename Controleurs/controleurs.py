@@ -128,7 +128,7 @@ class Controls:
         display in the left window """
         global TOURNAMENT
         # if not all rounds have been created
-        if len(TOURNAMENT.rounds) < TOURNAMENT.round_number:
+        if len(TOURNAMENT.rounds) < int(TOURNAMENT.round_number):
             # create round instance from model and save it into the tournament variable
             round_instance = mod.Round()
             TOURNAMENT.rounds.append(round_instance)
@@ -165,7 +165,7 @@ class Controls:
             cls.set_match_scores(elem)
         # generate time_end attribut for Round instance and set self.closed attribut to True
         cls.create_time_end_for_round()
-        if len(TOURNAMENT.rounds) == TOURNAMENT.round_number:
+        if len(TOURNAMENT.rounds) == int(TOURNAMENT.round_number):
             TOURNAMENT.tournament_ended = True
         # update the database with the new data of the tournament instance
         SaveOpenTournament.update_current_tournament()
@@ -207,10 +207,10 @@ class Controls:
         # write these info in the players attributes for next rounds and final score of tournament
         match_dictionary['match_instance'].player1.tournament_total_points += match_dictionary['match_instance']. \
             score_player1
-        match_dictionary['match_instance'].player1.opponents.append(match_dictionary['match_instance'].player2.id)
+        # match_dictionary['match_instance'].player1.opponents.append(match_dictionary['match_instance'].player2.id)
         match_dictionary['match_instance'].player2.tournament_total_points += match_dictionary['match_instance']. \
             score_player2
-        match_dictionary['match_instance'].player2.opponents.append(match_dictionary['match_instance'].player1.id)
+        # match_dictionary['match_instance'].player2.opponents.append(match_dictionary['match_instance'].player1.id)
 
     @classmethod
     def create_time_end_for_round(cls) -> None:
@@ -232,6 +232,11 @@ class DataBase:
     @classmethod
     def insert_player(cls, player: object) -> None:
         """ method used when a player is added to the tournament instance to add it also into the database """
+        # player_db = Query()
+        # try:
+        #     TABLES['players'].update(player.serialize_player(),player_db.last_name == player.last_name and
+        #     player_db.first_name == player.first_name)
+        # except:
         TABLES['players'].insert(player.serialize_player())
 
     @staticmethod
@@ -295,8 +300,12 @@ class SaveOpenTournament:
         """ method used only for the first launch of the program to know if it must continue a tournament already
         existing and save in the database but not finished or if it must start a new one, send dict to the GUI"""
         if TOURNAMENT.tournament_ended is False:
+            if TOURNAMENT.tournament_started is False:
+                label = 'aucun'
+            else:
+                label = TOURNAMENT.name
             menus_states = {'tournament_start': 'disabled', 'add_players': 'disabled', 'launch_round': 'disabled'}
-            left_window_values = {'Tournoi': TOURNAMENT.name,
+            left_window_values = {'Tournoi': label,
                                   'Joueurs': '{}/{}'.format(len(TOURNAMENT.players), cf.NUMBER_OF_PLAYERS),
                                   'Tour en cours': 'aucun'}
             if TOURNAMENT.tournament_started is False:  # if the tournament instance has not been activated by user,
@@ -311,7 +320,7 @@ class SaveOpenTournament:
                 left_window_values['Tour en cours'] = 'aucun'
                 menus_states['launch_round'] = 'normal'
                 return {'states': menus_states, 'left_window_values': left_window_values}
-            elif len(TOURNAMENT.rounds) < TOURNAMENT.round_number:  # if not all the rounds have been created
+            elif len(TOURNAMENT.rounds) < int(TOURNAMENT.round_number):  # if not all the rounds have been created
                 if TOURNAMENT.rounds[-1].closed is False:  # if the last round is not finished
                     left_window_values['Tour en cours'] = TOURNAMENT.rounds[-1].name
                     menus_states['launch_round'] = 'disabled'
@@ -482,10 +491,12 @@ class GenerateReports:
 
     @staticmethod
     def sort_results_name(item):
+        """ method used to sort players by name """
         return item['last_name'].lower(), item['first_name'].lower()
 
     @staticmethod
     def sort_results_rank(item):
+        """ method used to sort players by rank then names """
         return str(item['rank']), item['last_name'].lower(), item['first_name'].lower()
 
     def create_file(self, data: list) -> None:

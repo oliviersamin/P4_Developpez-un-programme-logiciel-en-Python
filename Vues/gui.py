@@ -219,13 +219,15 @@ class GenericWindow(tk.Frame):
             except TypeError:
                 elem.destroy()
 
-    def my_line(self, master, name, r, c, rsp, csp, px, py) -> None:
+    def my_line(self, master, name, prefilled_entry, r, c, rsp, csp, px, py) -> None:
         """ this method generates a line with a label in a column and an Entry in the column next to it
          It also saves the Entry in the self.data variable
          """
         line = tk.Label(master=master, text=name, anchor='w')
         line.grid(row=r, column=c, rowspan=rsp, columnspan=csp, padx=px, pady=py)
-        l2 = tk.Entry(master=master)
+        text = tk.StringVar()
+        text.set(prefilled_entry)
+        l2 = tk.Entry(master=master, textvariable=text)
         l2.grid(row=r, column=c + 1, rowspan=rsp, columnspan=csp, padx=px, pady=py)
         self.data.append({'name': name, 'tk_object': l2})
 
@@ -344,8 +346,9 @@ class CreateNewTournament(GenericWindow):
     def display(self) -> None:
         """ displays  the window """
         labels = [value for value in cf.LABELS_TOURNAMENT_CREATION.values()]
+        entries = [value for value in cf.ENTRIES_TOURNAMENT_CREATION.values()]
         for index, elem in enumerate(labels):
-            self.my_line(self.master, elem, index, 0, 1, 1, 10, 10)
+            self.my_line(self.master, elem, entries[index], index, 0, 1, 1, 10, 10)
         self.my_button(self.master, 'créer le tournoi', 0, len(labels) + 1, self.create_new_tournament)
 
     def create_new_tournament(self) -> None:
@@ -400,7 +403,7 @@ class AddPlayers(GenericWindow):
         self.reset_variables()
         labels = [value for value in cf.LABELS_ADD_PLAYERS.values()]
         for index, elem in enumerate(labels):
-            self.my_line(self.master, elem, index, 0, 1, 1, 10, 10)
+            self.my_line(self.master, elem, '', index, 0, 1, 1, 10, 10)
         self.my_button(self.master, 'ajouter le joueur', 1, len(labels) + 1, self.add_new_player)
 
     def add_new_player(self) -> None:
@@ -527,8 +530,8 @@ class CloseRound(GenericWindow):
         # ask info to display to controller
         self.list_matches = ct.Controls.get_current_matches()
         for elem in self.list_matches:  # setup the data to be displayed
-            p1 = elem.player1.first_name + ' ' + elem.player1.last_name
-            p2 = elem.player2.first_name + ' ' + elem.player2.last_name
+            p1 = str(elem.player1)
+            p2 = str(elem.player2)
             match = p1 + ' vs ' + p2
             self.lignes.append({'match_instance': elem, 'label': match, 'choice': ['match nul', p1, p2],
                                 'result': None})
@@ -568,11 +571,11 @@ class CloseRound(GenericWindow):
         lignes = []
         for match in order['matches']:
             lignes.append([])
-            lignes[-1].append(match.player1.first_name + ' ' + match.player1.last_name)
+            lignes[-1].append(str(match.player1))
             lignes[-1].append(match.player1.tournament_total_points)
             lignes[-1].append(match.player1.rank)
             lignes.append([])
-            lignes[-1].append(match.player2.first_name + ' ' + match.player2.last_name)
+            lignes[-1].append(str(match.player2))
             lignes[-1].append(match.player2.tournament_total_points)
             lignes[-1].append(match.player2.rank)
 
@@ -603,8 +606,9 @@ class ChooseTournamentForReport(GenericWindow):
         self.top = tk.Toplevel(self.master)
         self.title = 'Sélectionner le tournoi :'
         self.label_line = 'Choisir le tournoi'
-        self.message_path_to_folder = 'Le rapport est dans le dossier \n' + \
-                                      os.path.join(os.path.abspath(os.path.curdir), 'Reports')
+        self.path_to_folder = os.path.join(os.path.abspath(os.path.curdir), 'Reports')
+        self.message_path_to_folder = "Le rapport est créé et disponible\n\nChemin d'accès au rapport:" \
+                                      "\n\n{}".format(self.path_to_folder)
         self.tournament = None
         self.name = option
         self.filtres = ['list_all_actors', 'list_all_tournaments']

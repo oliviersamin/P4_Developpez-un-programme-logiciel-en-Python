@@ -71,7 +71,10 @@ class Tournament:
             first_half = self.players[:4]
             second_half = self.players[4:]
             # 1-c
-            matches = [(player_fh, player_sh) for player_fh, player_sh in zip(first_half, second_half)]
+            for player_fh, player_sh in zip(first_half, second_half):
+                matches.append((player_fh, player_sh))
+                player_fh.opponents.append(player_sh.id)
+                player_sh.opponents.append(player_fh.id)
             return matches
 
         elif (len(self.rounds) > 1) & (len(self.rounds) <= int(self.round_number)):
@@ -85,6 +88,7 @@ class Tournament:
                 for ind, p_sh in enumerate(second_half):
                     if p_sh.id not in p_fh.opponents:
                         p_fh.opponents.append(p_sh.id)
+                        p_sh.opponents.append(p_fh.id)
                         second_half.pop(ind)
                         matches.append((p_fh, p_sh))
                         break
@@ -132,6 +136,10 @@ class Player:
         self.tournament_total_points = 0  # used to sort the players for the rounds of tournament and display the
         # tournament results
         self.opponents = []  # used for generating swiss pairs for matches
+
+    def __str__(self):
+        """ method used to display data for the matches in the GUI and get scores of matches """
+        return(self.first_name + ' ' + self.last_name)
 
     def serialize_player(self) -> dict:
         """ serialize a player instance into a dictionary with the following structure:

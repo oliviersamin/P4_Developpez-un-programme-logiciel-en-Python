@@ -15,6 +15,9 @@ SIZE_ROUND_IN_PROGRESS = "550x350"
 SIZE_CLOSING_ROUND = "550x450"
 
 # ################################other GUI config ##############################
+NUMBER_OF_ROUNDS = 4
+
+TIME_CONTROL = 'bullet/blitz/coup rapide'
 
 TITLE_WINDOW_DISPLAY_MATCHES_OF_ROUND = 'Matchs a jouer pour ce round'
 
@@ -22,12 +25,14 @@ LABELS_TOURNAMENT_CREATION = {'name': 'Nom du tournoi', 'location': 'Lieu', 'dat
                               'round_number': 'Nombre de tours', 'time_control': 'Contrôle du temps',
                               'description': 'Description'}
 
+ENTRIES_TOURNAMENT_CREATION = {'name': '', 'location': '', 'date': '', 'round_number': NUMBER_OF_ROUNDS,
+                               'time_control': TIME_CONTROL, 'description': ''}
+
 LABELS_ADD_PLAYERS = {'last_name': 'Nom de famille', 'first_name': 'Prénom', 'date_of_birth': 'Date de naissance',
                       'sex': 'Sexe', 'rank': 'Classement'}
 
 LABELS_ROUND_CREATION = {'name': 'nom du tour'}
 
-NUMBER_OF_ROUNDS = 4
 
 # ######################################## controller config ###################################################
 NUMBER_OF_PLAYERS = 8
